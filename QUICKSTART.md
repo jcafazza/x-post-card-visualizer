@@ -33,15 +33,7 @@ You'll get a URL like: `https://your-project.vercel.app`
 
 ## Step 2: Set Up Framer Components (10 minutes)
 
-### A. Install html-to-image in Framer
-
-1. Open your Framer project
-2. Go to **Assets** panel (left sidebar)
-3. Click **"+"** button
-4. Search for **"html-to-image"**
-5. Click **Install**
-
-### B. Add API Fetcher
+### A. Add API Fetcher
 
 1. In Framer, go to the **Code** tab (top menu)
 2. Click **"+"** to create a new **Code File**
@@ -53,12 +45,13 @@ You'll get a URL like: `https://your-project.vercel.app`
    ```
 6. Save
 
-### C. Add PNG Exporter
+### B. Add PNG Exporter
 
 1. In Framer Code tab, click **"+"** again
 2. Create a new **Code Component** (not file)
 3. Name it `PNGExporter`
-4. Copy the contents of [`framer-components/PNGExporter.tsx`](framer-components/PNGExporter.tsx)
+4. Copy the contents of [`framer-components/PNGExporter-FramerNative.tsx`](framer-components/PNGExporter-FramerNative.tsx)
+   - **Note:** This version uses CDN-loaded html2canvas - no package installation needed!
 5. Save
 
 ---

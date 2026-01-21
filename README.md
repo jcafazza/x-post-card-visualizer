@@ -36,7 +36,7 @@ x-post-visualizer/
 - **Frontend**: Framer (visual design + hosting)
 - **Backend API**: Vercel Serverless Functions
 - **Scraping**: Cheerio (lightweight HTML parsing)
-- **Export**: html-to-image (PNG export in browser)
+- **Export**: html2canvas via CDN (PNG export in browser - no install needed)
 
 ---
 
@@ -50,7 +50,6 @@ npm install
 
 This installs:
 - `cheerio` - HTML parsing for X post scraping
-- `html-to-image` - PNG export in Framer
 
 ### 2. Deploy API to Vercel
 
@@ -78,14 +77,7 @@ After deployment, you'll get a URL like: `https://your-project.vercel.app`
 
 You mentioned you already have a Framer project ready.
 
-#### B. Install html-to-image in Framer
-
-1. In Framer, open the **Assets** panel
-2. Click the **"+"** button
-3. Search for **"html-to-image"**
-4. Click **Install**
-
-#### C. Add API Fetcher Component
+#### B. Add API Fetcher Component
 
 1. In Framer, go to **Code** tab
 2. Create a new **Code File** or **Override**
@@ -95,10 +87,11 @@ You mentioned you already have a Framer project ready.
    const API_ENDPOINT = "https://your-project.vercel.app/api/scrape-post"
    ```
 
-#### D. Add PNG Exporter Component
+#### C. Add PNG Exporter Component
 
 1. In Framer, create a new **Code Component**
-2. Copy the contents of [`framer-components/PNGExporter.tsx`](framer-components/PNGExporter.tsx)
+2. Copy the contents of [`framer-components/PNGExporter-FramerNative.tsx`](framer-components/PNGExporter-FramerNative.tsx)
+   - This version loads html2canvas from CDN - no package installation needed!
 3. Add the component to your canvas as an export button
 
 ---
