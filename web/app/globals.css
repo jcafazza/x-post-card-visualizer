@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@theme {
+  /* Custom border radius values for cards */
+  --radius-card-0: 0px;
+  --radius-card-8: 8px;
+  --radius-card-16: 16px;
+  --radius-card-20: 20px;
+  --radius-card-24: 24px;
+
+  /* Custom shadow values for cards */
+  --shadow-card-none: none;
+  --shadow-card-light: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-card-medium: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --shadow-card-strong: 0 8px 32px rgba(0, 0, 0, 0.16);
+}
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 250, 250, 250;
+  --background-end-rgb: 250, 250, 250;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: rgb(var(--background-start-rgb));
+}
+
+/* Animations */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes zoom-in {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.animate-in {
+  animation-duration: 0.2s;
+  animation-fill-mode: forwards;
+}
+
+.fade-in {
+  animation-name: fade-in;
+}
+
+.zoom-in {
+  animation-name: zoom-in;
+}
+
+@keyframes slide-in-from-bottom {
+  from { transform: translateY(10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.slide-in-from-bottom-2 {
+  animation-name: slide-in-from-bottom;
+}
+
+.delay-150 {
+  animation-delay: 150ms;
+}
