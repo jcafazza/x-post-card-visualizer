@@ -4,11 +4,13 @@ import { useState, useRef, useEffect } from 'react'
 import PostCard from './PostCard'
 import { PostData, CardSettings } from '@/types/post'
 import { getThemeStyles } from '@/lib/themes'
+import { useTooltipTimer } from '@/hooks/useTooltipTimer'
 
 interface InteractivePostCardProps {
   post: PostData
   settings: CardSettings
   onSettingsChange: (settings: CardSettings) => void
+  toolbarTooltip?: string | null
 }
 
 const CORNER_ZONE = 24
@@ -16,18 +18,29 @@ const MIN_WIDTH = 350
 const MAX_WIDTH = 700
 const MAX_RADIUS = 40
 
-export default function InteractivePostCard({ post, settings, onSettingsChange }: InteractivePostCardProps) {
+export default function InteractivePostCard({ post, settings, onSettingsChange, toolbarTooltip }: InteractivePostCardProps) {
   const [isResizingWidth, setIsResizingWidth] = useState(false)
   const [isResizingRadius, setIsResizingRadius] = useState(false)
   const [hoveredCorner, setHoveredCorner] = useState<string | null>(null)
   const [indicatorValue, setIndicatorValue] = useState<string | null>(null)
   const [isIndicatorVisible, setIsIndicatorVisible] = useState(false)
+  const [displayedToolbarTooltip, setDisplayedToolbarTooltip] = useState<string | null>(null)
+  const [isToolbarTooltipVisible, setIsToolbarTooltipVisible] = useState(false)
   const cardRef = useRef<HTMLDivElement>(null)
   const startXRef = useRef<number>(0)
   const startWidthRef = useRef<number>(0)
   const startRadiusRef = useRef<number>(0)
 
   const theme = getThemeStyles(settings.theme)
+
+  // Handle toolbar tooltip display changes
+  const handleTooltipDisplayChange = (tooltip: string | null, isVisible: boolean) => {
+    setDisplayedToolbarTooltip(tooltip)
+    setIsToolbarTooltipVisible(isVisible)
+  }
+
+  // Use custom hook for tooltip timer management
+  useTooltipTimer(toolbarTooltip ?? null, handleTooltipDisplayChange)
 
   // Handle mouse move for resizing
   useEffect(() => {
@@ -354,20 +367,39 @@ export default function InteractivePostCard({ post, settings, onSettingsChange }
           }}
         />
 
-        {/* Value Indicator Label */}
-        <div
-          className={`absolute left-1/2 -translate-x-1/2 mt-[20px] top-full px-3 py-1.5 rounded-full border text-[10px] font-medium transition-all duration-1000 ease-in-out pointer-events-none whitespace-nowrap z-50 ${
-            isIndicatorVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-1 scale-95 pointer-events-none'
-          }`}
-          style={{
-            backgroundColor: theme.bg,
-            borderColor: theme.border,
-            color: theme.textSecondary,
-            boxShadow: `0 2px 10px rgba(0, 0, 0, ${settings.theme === 'light' ? '0.04' : '0.2'})`,
-          }}
-        >
-          {indicatorValue}
-        </div>
+        {/* Value Indicator Label - Shows radius/width or toolbar tooltip */}
+        {/* Toolbar tooltip takes priority, but both can show if resizing while clicking toolbar */}
+        {displayedToolbarTooltip && (
+          <div
+            className={`absolute left-1/2 -translate-x-1/2 mt-[20px] top-full px-3 py-1.5 rounded-full border text-[10px] font-medium transition-all duration-1000 ease-in-out pointer-events-none whitespace-nowrap z-50 ${
+              isToolbarTooltipVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-1 scale-95'
+            }`}
+            style={{
+              backgroundColor: theme.bg,
+              borderColor: theme.border,
+              color: theme.textSecondary,
+              boxShadow: `0 2px 10px rgba(0, 0, 0, ${settings.theme === 'light' ? '0.04' : '0.2'})`,
+            }}
+          >
+            {displayedToolbarTooltip}
+          </div>
+        )}
+        {/* Radius/Width indicator - shows when resizing, below toolbar tooltip if both active */}
+        {isIndicatorVisible && (
+          <div
+            className={`absolute left-1/2 -translate-x-1/2 ${displayedToolbarTooltip ? 'mt-[50px]' : 'mt-[20px]'} top-full px-3 py-1.5 rounded-full border text-[10px] font-medium transition-all duration-1000 ease-in-out pointer-events-none whitespace-nowrap z-50 ${
+              isIndicatorVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-1 scale-95 pointer-events-none'
+            }`}
+            style={{
+              backgroundColor: theme.bg,
+              borderColor: theme.border,
+              color: theme.textSecondary,
+              boxShadow: `0 2px 10px rgba(0, 0, 0, ${settings.theme === 'light' ? '0.04' : '0.2'})`,
+            }}
+          >
+            {indicatorValue}
+          </div>
+        )}
       </div>
     </div>
   )

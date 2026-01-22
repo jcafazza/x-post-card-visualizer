@@ -18,7 +18,20 @@ export interface PostData {
 
 export type Theme = 'light' | 'dim' | 'dark'
 export type BorderRadius = '0' | '8' | '16' | '20' | '24'
-export type ShadowIntensity = 'none' | 'light' | 'medium' | 'strong'
+export type ShadowIntensity = 'flat' | 'raised' | 'floating' | 'elevated'
+
+export interface ThemeStyles {
+  bg: string
+  textPrimary: string
+  textSecondary: string
+  textTertiary: string
+  border: string
+  appBg: string
+  appText: string
+  headerBg: string
+  headerBorder: string
+  toolbarBg: string
+}
 
 export interface CardSettings {
   theme: Theme

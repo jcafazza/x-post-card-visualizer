@@ -13,11 +13,12 @@ export default function Home() {
   const [settings, setSettings] = useState<CardSettings>({
     theme: 'light',
     borderRadius: '20',
-    shadowIntensity: 'medium',
+    shadowIntensity: 'floating',
     showDate: true,
     cardWidth: 500,
     customBorderRadius: 20,
   })
+  const [toolbarTooltip, setToolbarTooltip] = useState<string | null>(null)
 
   const handleReset = () => {
     setSettings({
@@ -60,7 +61,7 @@ export default function Home() {
         
         {/* URL Input Pill */}
         <div className="w-[480px]">
-          <URLInput onPostLoad={setPost} theme={theme} />
+          <URLInput onPostLoad={setPost} theme={theme} currentTheme={settings.theme} />
         </div>
       </div>
 
@@ -69,14 +70,26 @@ export default function Home() {
         <div className="min-h-full p-12 pt-32 flex flex-col items-center justify-center gap-[40px]">
           {/* Floating Toolbar */}
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-500 delay-150">
-            <Toolbar settings={settings} onSettingsChange={setSettings} currentTheme={theme} onReset={handleReset} />
+            <Toolbar 
+              settings={settings} 
+              onSettingsChange={setSettings} 
+              currentTheme={theme} 
+              onReset={handleReset}
+              onTooltipChange={setToolbarTooltip}
+              cardWidth={settings.cardWidth}
+            />
           </div>
 
           {/* Preview Container */}
           <div className="relative">
             {post ? (
               <div className="animate-in fade-in zoom-in duration-300">
-                <InteractivePostCard post={post} settings={settings} onSettingsChange={setSettings} />
+                <InteractivePostCard 
+                  post={post} 
+                  settings={settings} 
+                  onSettingsChange={setSettings}
+                  toolbarTooltip={toolbarTooltip}
+                />
               </div>
             ) : (
               <div 

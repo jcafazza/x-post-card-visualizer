@@ -1,8 +1,8 @@
 'use client'
 
-import { CardSettings, Theme, ShadowIntensity } from '@/types/post'
+import { CardSettings, Theme, ShadowIntensity, ThemeStyles } from '@/types/post'
 import { exportElementToPNG } from '@/lib/export'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { 
   Sun, 
   SunMoon, 
@@ -13,18 +13,32 @@ import {
   Download, 
   Loader2 
 } from 'lucide-react'
+import { TOOLTIP_DISPLAY_DURATION } from '@/constants/tooltip'
 
 interface ToolbarProps {
   settings: CardSettings
   onSettingsChange: (settings: CardSettings) => void
-  currentTheme: any
+  currentTheme: ThemeStyles
   onReset: () => void
+  onTooltipChange: (tooltip: string | null) => void
+  cardWidth: number
 }
 
-export default function Toolbar({ settings, onSettingsChange, currentTheme, onReset }: ToolbarProps) {
+export default function Toolbar({ settings, onSettingsChange, currentTheme, onReset, onTooltipChange, cardWidth }: ToolbarProps) {
   const [isExporting, setIsExporting] = useState(false)
   const [clickedButton, setClickedButton] = useState<string | null>(null)
   const [exportError, setExportError] = useState<string | null>(null)
+  const tooltipTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (tooltipTimerRef.current) {
+        clearTimeout(tooltipTimerRef.current)
+        tooltipTimerRef.current = null
+      }
+    }
+  }, [])
 
   const handleExport = async () => {
     setIsExporting(true)
@@ -44,22 +58,43 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
     }
   }
 
+  const showTooltip = (text: string) => {
+    // Clear any existing tooltip timer
+    if (tooltipTimerRef.current) {
+      clearTimeout(tooltipTimerRef.current)
+      tooltipTimerRef.current = null
+    }
+    
+    // Show new tooltip
+    onTooltipChange(text)
+    
+    // Auto-hide after display duration
+    tooltipTimerRef.current = setTimeout(() => {
+      onTooltipChange(null)
+      tooltipTimerRef.current = null
+    }, TOOLTIP_DISPLAY_DURATION)
+  }
+
   const cycleTheme = () => {
     setClickedButton('theme')
     setTimeout(() => setClickedButton(null), 200)
     const themes: Theme[] = ['light', 'dim', 'dark']
     const currentIndex = themes.indexOf(settings.theme)
     const nextIndex = (currentIndex + 1) % themes.length
-    onSettingsChange({ ...settings, theme: themes[nextIndex] })
+    const newTheme = themes[nextIndex]
+    onSettingsChange({ ...settings, theme: newTheme })
+    showTooltip(`theme: ${newTheme}`)
   }
 
   const cycleShadow = () => {
     setClickedButton('shadow')
     setTimeout(() => setClickedButton(null), 200)
-    const intensities: ShadowIntensity[] = ['none', 'light', 'medium', 'strong']
+    const intensities: ShadowIntensity[] = ['flat', 'raised', 'floating', 'elevated']
     const currentIndex = intensities.indexOf(settings.shadowIntensity)
     const nextIndex = (currentIndex + 1) % intensities.length
-    onSettingsChange({ ...settings, shadowIntensity: intensities[nextIndex] })
+    const newIntensity = intensities[nextIndex]
+    onSettingsChange({ ...settings, shadowIntensity: newIntensity })
+    showTooltip(`shadow: ${newIntensity}`)
   }
 
   const handleReset = () => {
@@ -71,7 +106,9 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
   const handleDateToggle = () => {
     setClickedButton('date')
     setTimeout(() => setClickedButton(null), 200)
-    onSettingsChange({ ...settings, showDate: !settings.showDate })
+    const newShowDate = !settings.showDate
+    onSettingsChange({ ...settings, showDate: newShowDate })
+    showTooltip(`date: ${newShowDate ? 'on' : 'off'}`)
   }
 
   const iconClasses = "w-5 h-5"
@@ -88,7 +125,13 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
   })
 
   return (
-    <div className="relative flex items-center gap-3">
+    <div 
+      className="relative flex items-center justify-between" 
+      style={{ 
+        width: `${cardWidth}px`,
+        maxWidth: '100%',
+      }}
+    >
       {/* Export Error Message */}
       {exportError && (
         <div
@@ -104,68 +147,74 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
         </div>
       )}
 
-      {/* Theme Cycle Button */}
-      <button
-        onClick={cycleTheme}
-        className={`${buttonBase} ${clickedButton === 'theme' ? 'scale-90' : ''}`}
-        style={getButtonStyle(true)}
-        aria-label="Cycle Theme"
-      >
-        {settings.theme === 'light' && <Sun className={iconClasses} strokeWidth={1.5} />}
-        {settings.theme === 'dim' && <SunMoon className={iconClasses} strokeWidth={1.5} />}
-        {settings.theme === 'dark' && <Moon className={iconClasses} strokeWidth={1.5} />}
-      </button>
+      {/* Left Group: Theme, Shadow, Date */}
+      <div className="flex items-center gap-3">
+        {/* Theme Cycle Button */}
+        <button
+          onClick={cycleTheme}
+          className={`${buttonBase} ${clickedButton === 'theme' ? 'scale-90' : ''}`}
+          style={getButtonStyle(true)}
+          aria-label="Cycle Theme"
+        >
+          {settings.theme === 'light' && <Sun className={iconClasses} strokeWidth={1.5} />}
+          {settings.theme === 'dim' && <SunMoon className={iconClasses} strokeWidth={1.5} />}
+          {settings.theme === 'dark' && <Moon className={iconClasses} strokeWidth={1.5} />}
+        </button>
 
-      {/* Shadow Cycle Button */}
-      <button
-        onClick={cycleShadow}
-        className={`${buttonBase} ${clickedButton === 'shadow' ? 'scale-90' : ''}`}
-        style={getButtonStyle(true)}
-        aria-label="Cycle Shadow"
-      >
-        <Layers2
-          className={iconClasses}
-          strokeWidth={1.5}
-          style={{
-            opacity: settings.shadowIntensity === 'none' ? 0.5 : settings.shadowIntensity === 'light' ? 0.75 : 1
-          }}
-        />
-      </button>
+        {/* Shadow Cycle Button */}
+        <button
+          onClick={cycleShadow}
+          className={`${buttonBase} ${clickedButton === 'shadow' ? 'scale-90' : ''}`}
+          style={getButtonStyle(true)}
+          aria-label="Cycle Shadow"
+        >
+          <Layers2
+            className={iconClasses}
+            strokeWidth={1.5}
+            style={{
+              opacity: settings.shadowIntensity === 'flat' ? 0.5 : settings.shadowIntensity === 'raised' ? 0.75 : 1
+            }}
+          />
+        </button>
 
-      {/* Reset Button */}
-      <button
-        onClick={handleReset}
-        className={`${buttonBase} ${clickedButton === 'reset' ? 'scale-90' : ''}`}
-        style={getButtonStyle()}
-        aria-label="Reset to Default"
-      >
-        <RotateCcw className={iconClasses} strokeWidth={1.5} />
-      </button>
+        {/* Display Date Toggle */}
+        <button
+          onClick={handleDateToggle}
+          className={`${buttonBase} ${clickedButton === 'date' ? 'scale-90' : ''}`}
+          style={getButtonStyle(settings.showDate)}
+          aria-label="Toggle Date"
+        >
+          <Calendar className={iconClasses} strokeWidth={1.5} />
+        </button>
+      </div>
 
-      {/* Display Date Toggle */}
-      <button
-        onClick={handleDateToggle}
-        className={`${buttonBase} ${clickedButton === 'date' ? 'scale-90' : ''}`}
-        style={getButtonStyle(settings.showDate)}
-        aria-label="Toggle Date"
-      >
-        <Calendar className={iconClasses} strokeWidth={1.5} />
-      </button>
+      {/* Right Group: Reset, Export */}
+      <div className="flex items-center gap-3">
+        {/* Reset Button */}
+        <button
+          onClick={handleReset}
+          className={`${buttonBase} ${clickedButton === 'reset' ? 'scale-90' : ''}`}
+          style={getButtonStyle()}
+          aria-label="Reset to Default"
+        >
+          <RotateCcw className={iconClasses} strokeWidth={1.5} />
+        </button>
 
-      {/* Export Button */}
-      <button
-        onClick={handleExport}
-        disabled={isExporting}
-        className={`${buttonBase} ${clickedButton === 'export' ? 'scale-90' : ''}`}
-        style={getButtonStyle()}
-        aria-label="Download PNG"
-      >
-        {isExporting ? (
-          <Loader2 className={`${iconClasses} animate-spin`} strokeWidth={1.5} />
-        ) : (
-          <Download className={iconClasses} strokeWidth={1.5} />
-        )}
-      </button>
+        {/* Export Button */}
+        <button
+          onClick={handleExport}
+          disabled={isExporting}
+          className={`${buttonBase} ${clickedButton === 'export' ? 'scale-90' : ''}`}
+          style={getButtonStyle()}
+          aria-label="Download PNG"
+        >
+          {isExporting ? (
+            <Loader2 className={`${iconClasses} animate-spin`} strokeWidth={1.5} />
+          ) : (
+            <Download className={iconClasses} strokeWidth={1.5} />
+          )}
+        </button>
+      </div>
     </div>
   )
 }

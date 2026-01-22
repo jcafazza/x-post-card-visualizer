@@ -1,15 +1,16 @@
 'use client'
 
 import { useState } from 'react'
-import { PostData } from '@/types/post'
+import { PostData, Theme, ThemeStyles } from '@/types/post'
 import { fetchPostData } from '@/lib/api'
 
 interface URLInputProps {
   onPostLoad: (post: PostData) => void
-  theme: any
+  theme: ThemeStyles
+  currentTheme: Theme
 }
 
-export default function URLInput({ onPostLoad, theme }: URLInputProps) {
+export default function URLInput({ onPostLoad, theme, currentTheme }: URLInputProps) {
   const [url, setUrl] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -38,15 +39,18 @@ export default function URLInput({ onPostLoad, theme }: URLInputProps) {
     }
   }
 
+  // Shadow matches button icons: unfocused uses same shadow, focused is subtly darker
+  const unfocusedShadow = `0 2px 8px rgba(0, 0, 0, ${currentTheme === 'light' ? '0.04' : '0.2'})`
+  const focusedShadow = `0 2px 8px rgba(0, 0, 0, ${currentTheme === 'light' ? '0.08' : '0.3'})`
+
   return (
     <form 
       onSubmit={handleSubmit} 
-      className={`relative flex items-center w-full transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] border rounded-full p-1 ${
-        isFocused ? 'scale-[1.01] shadow-md bg-white/10' : 'scale-100 shadow-none'
-      }`}
+      className="relative flex items-center w-full transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] border rounded-full p-1"
       style={{ 
         backgroundColor: 'rgba(0,0,0,0.02)', 
         borderColor: theme.headerBorder,
+        boxShadow: isFocused ? focusedShadow : unfocusedShadow,
       }}
     >
       <div className="flex-1 relative flex items-center">
@@ -58,9 +62,13 @@ export default function URLInput({ onPostLoad, theme }: URLInputProps) {
           onBlur={() => setIsFocused(false)}
           placeholder="Paste X post URL..."
           disabled={isLoading}
-          className="w-full bg-transparent border-none py-1.5 pl-3 pr-24 text-base transition-all duration-500 outline-none placeholder:opacity-40 font-light"
+          className="w-full bg-transparent py-1.5 pl-3 pr-24 text-base placeholder:opacity-40 font-light"
           style={{ 
             color: theme.appText,
+            outline: isFocused ? `2px solid ${theme.appText}` : '2px solid transparent',
+            outlineOffset: '2px',
+            borderRadius: '9999px',
+            transition: 'outline 0.4s cubic-bezier(0.23, 1, 0.32, 1)',
           }}
         />
         

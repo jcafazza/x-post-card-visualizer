@@ -1,6 +1,6 @@
 'use client'
 
-import { PostData, CardSettings } from '@/types/post'
+import { PostData, CardSettings, ShadowIntensity } from '@/types/post'
 import { getThemeStyles } from '@/lib/themes'
 import Image from 'next/image'
 
@@ -12,12 +12,12 @@ interface PostCardProps {
 export default function PostCard({ post, settings }: PostCardProps) {
   const theme = getThemeStyles(settings.theme)
 
-  // Map shadow intensity to Tailwind classes
-  const shadowClasses = {
-    none: '',
-    light: 'shadow-card-light',
-    medium: 'shadow-card-medium',
-    strong: 'shadow-card-strong',
+  // Map shadow intensity to Tailwind classes (type-safe)
+  const shadowClasses: Record<ShadowIntensity, string> = {
+    flat: '',
+    raised: 'shadow-card-light',
+    floating: 'shadow-card-medium',
+    elevated: 'shadow-card-strong',
   }
 
   // Map border radius to Tailwind classes
