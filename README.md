@@ -1,15 +1,19 @@
 # X Post Card Builder
 
-Transform X (Twitter) posts into beautiful, customizable visual cards. Export as PNG or embed on your website.
+Transform X (Twitter) posts into beautiful, customizable visual cards with real-time interactive controls.
+
+![X Post Card Builder](https://img.shields.io/badge/Next.js-15-black) ![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue) ![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-06B6D4)
 
 ## Product Vision
 
 Unlike screenshot tools focused on social sharing, X Post Card Builder gives designers and creators granular control over card design to create embeddable post cards that match their website's brand aesthetic.
 
-**Core Flow:**
-1. Paste X post URL
-2. Customize card design (colors, radius, spacing, shadows, toggle metrics/date)
-3. Export as PNG (MVP) or copy embed code (Phase 2)
+**Core Features:**
+- 🎨 **Interactive Customization** - Drag to resize card width and adjust border radius in real-time
+- 🌓 **Three Theme System** - Light, Dim, and Dark modes with opacity-based colors
+- ✨ **Live Preview** - See changes instantly as you adjust controls
+- 📥 **PNG Export** - High-quality 2x resolution download
+- 🎯 **No Metrics** - Clean, focused design without clutter
 
 ---
 
@@ -19,145 +23,127 @@ Unlike screenshot tools focused on social sharing, X Post Card Builder gives des
 x-post-visualizer/
 ├── api/
 │   └── scrape-post.js          # Vercel serverless function - scrapes X posts
-├── framer-components/
-│   ├── APIFetcher.tsx          # Framer component to fetch post data
-│   └── PNGExporter.tsx         # Framer component to export PNG
-├── package.json                # Dependencies
-├── vercel.json                 # Vercel configuration
-├── README.md                   # This file
-├── PRODUCT.md                  # Full product specification
-└── CLAUDE.md                   # AI context and guidelines
+├── web/                         # Next.js application
+│   ├── app/
+│   │   ├── page.tsx            # Main application page
+│   │   ├── layout.tsx          # Root layout with Inter font
+│   │   └── globals.css         # Tailwind + custom animations
+│   ├── components/
+│   │   ├── InteractivePostCard.tsx  # Draggable resize controls
+│   │   ├── PostCard.tsx        # Card display component
+│   │   ├── Toolbar.tsx         # Floating control buttons
+│   │   └── URLInput.tsx        # URL import field
+│   ├── lib/
+│   │   ├── api.ts              # API client with error handling
+│   │   ├── export.ts           # PNG export with html2canvas
+│   │   ├── themes.ts           # Theme configuration
+│   │   └── placeholder.ts      # Brad Radius default post
+│   ├── types/
+│   │   └── post.ts             # TypeScript interfaces
+│   └── public/
+│       └── avatars/            # Static assets
+├── assets/
+│   └── xLogo.svg               # X logo for header
+├── package.json
+├── vercel.json
+└── README.md                   # This file
 ```
 
 ---
 
 ## Tech Stack
 
-- **Frontend**: Framer (visual design + hosting)
+- **Frontend**: Next.js 15 (App Router) + TypeScript + Tailwind CSS v4
+- **UI Components**: Base UI (headless) + Lucide React icons
 - **Backend API**: Vercel Serverless Functions
 - **Scraping**: Cheerio (lightweight HTML parsing)
-- **Export**: html2canvas via CDN (PNG export in browser - no install needed)
+- **Export**: html2canvas (client-side PNG generation)
+- **Deployment**: Vercel (API + Frontend)
 
 ---
 
-## Setup Instructions
+## Quick Start
 
 ### 1. Install Dependencies
 
 ```bash
+# Install root dependencies (API)
+npm install
+
+# Install web app dependencies
+cd web
 npm install
 ```
 
-This installs:
-- `cheerio` - HTML parsing for X post scraping
-
-### 2. Deploy API to Vercel
-
-You already have a Vercel account, so:
+### 2. Run Development Server
 
 ```bash
-# Install Vercel CLI (if not already installed)
-npm install -g vercel
+# From web directory
+npm run dev
+```
 
-# Deploy
+Open [http://localhost:3000](http://localhost:3000) to see the app.
+
+**Note:** The app loads with Brad Radius's post as a placeholder. To fetch real posts, you'll need to deploy the API first.
+
+### 3. Deploy API to Vercel
+
+```bash
+# From project root
 vercel
-
-# Follow prompts:
-# - Link to existing project or create new
-# - Deploy
 ```
 
 After deployment, you'll get a URL like: `https://your-project.vercel.app`
 
-**Important:** Copy your API URL - you'll need it for Framer integration.
+### 4. Configure API Endpoint
 
-### 3. Set Up Framer Project
+Update `web/.env.local`:
 
-#### A. Create/Open Your Framer Project
+```env
+NEXT_PUBLIC_API_ENDPOINT=https://your-project.vercel.app/api/scrape-post
+```
 
-You mentioned you already have a Framer project ready.
+### 5. Deploy Web App
 
-#### B. Add API Fetcher Component
-
-1. In Framer, go to **Code** tab
-2. Create a new **Code File** or **Override**
-3. Copy the contents of [`framer-components/APIFetcher.tsx`](framer-components/APIFetcher.tsx)
-4. **Important:** Update the `API_ENDPOINT` constant with your Vercel URL:
-   ```tsx
-   const API_ENDPOINT = "https://your-project.vercel.app/api/scrape-post"
-   ```
-
-#### C. Add PNG Exporter Component
-
-1. In Framer, create a new **Code Component**
-2. Copy the contents of [`framer-components/PNGExporter-FramerNative.tsx`](framer-components/PNGExporter-FramerNative.tsx)
-   - This version loads html2canvas from CDN - no package installation needed!
-3. Add the component to your canvas as an export button
+```bash
+# From web directory
+vercel
+```
 
 ---
 
-## How to Use the Components in Framer
+## Features
 
-### API Fetcher
+### Interactive Card Controls
 
-**Option 1: As an Override (Recommended)**
+- **Width Resize** - Drag left/right edges to resize (350px - 700px)
+- **Border Radius** - Drag corners to adjust roundness (0px - 40px, snaps to 4px increments)
+- **Live Indicators** - See current values while dragging
 
-1. Apply the `withPostFetcher` override to your URL input field
-2. The override handles fetching automatically when user enters a URL
-3. Access the data in other components via Framer variables
+### Toolbar Controls
 
-**Option 2: As a Hook in a Code Component**
+- **Theme Cycle** - Switch between Light, Dim, and Dark themes
+- **Shadow Intensity** - Cycle through None, Light, Medium, Strong
+- **Date Toggle** - Show/hide post timestamp
+- **Reset** - Return to default width and border radius
+- **Export** - Download as high-quality PNG (2x resolution)
 
-```tsx
-import { usePostFetcher } from "./APIFetcher"
+### Theme System
 
-export default function PostCard(props) {
-    const { data, loading, error } = usePostFetcher(props.url)
+**Light Theme**
+- Background: `#FFFFFF`
+- Text: `#000000` (primary), `#666666` (secondary), `#999999` (tertiary)
+- Border: `#E6E6E6`
 
-    if (loading) return <div>Loading...</div>
-    if (error) return <div>Error: {error}</div>
-    if (!data) return <div>Enter a URL</div>
+**Dim Theme**
+- Background: `#15202B`
+- Text: `#F2F2F2` (primary), `#8899A6` (secondary), `#6E767D` (tertiary)
+- Border: `#38444D`
 
-    return (
-        <div>
-            <img src={data.author.avatar} alt={data.author.name} />
-            <h2>{data.author.name}</h2>
-            <p>{data.author.handle}</p>
-            <p>{data.content.text}</p>
-        </div>
-    )
-}
-```
-
-### PNG Exporter
-
-**Option 1: As a Component**
-
-1. Drag the `PNGExporter` component onto your canvas
-2. Set props in the properties panel:
-   - `targetId`: The name of your card preview frame (e.g., "card-preview")
-   - `label`: Button text (e.g., "Download PNG")
-   - `filename`: Output filename (e.g., "x-post-card.png")
-
-**Option 2: As a Function in an Override**
-
-```tsx
-import { exportElementToPNG } from "./PNGExporter"
-
-export function ExportButton(Component): ComponentType {
-    return (props) => {
-        const handleClick = async () => {
-            try {
-                await exportElementToPNG("card-preview", "x-post-card.png")
-            } catch (error) {
-                console.error("Export failed:", error)
-            }
-        }
-
-        return <Component {...props} onClick={handleClick} />
-    }
-}
-```
+**Dark Theme**
+- Background: `#000000`
+- Text: `#FFFFFF` (primary), `#71767B` (secondary/tertiary)
+- Border: `#2F3336`
 
 ---
 
@@ -185,9 +171,9 @@ Scrapes a public X post and returns structured data.
   },
   "content": {
     "text": "Post content...",
-    "images": ["https://...", "https://..."]
+    "images": ["https://..."]
   },
-  "timestamp": "2024-01-15T12:00:00Z"
+  "timestamp": "2026-01-22T23:37:00Z"
 }
 ```
 
@@ -198,82 +184,35 @@ Scrapes a public X post and returns structured data.
 
 ---
 
-## Framer Design Tips
-
-### Component Structure
-
-```
-Page (Framer canvas)
-├── Header
-├── Input Section
-│   └── URL Input Field (with APIFetcher override)
-├── Main Content (2-column layout)
-│   ├── Preview Panel (left)
-│   │   └── Card Preview Frame (name: "card-preview")
-│   │       ├── Author Section (avatar, name, handle)
-│   │       ├── Content Section (text, images)
-│   │       └── Timestamp Section (conditional)
-│   └── Controls Panel (right)
-│       ├── Toggle: Show Date
-│       ├── Dropdown: Theme (light/dim/dark)
-│       ├── Dropdown: Border Radius (0px/8px/16px/20px/24px)
-│       ├── Dropdown: Shadow Intensity (none/light/medium/strong)
-│       └── Export Button (PNGExporter component)
-└── Footer
-```
-
-### Framer Variables to Track State
-
-Create these variables in Framer to manage the app state:
-
-- `postUrl` (string) - User input URL
-- `postData` (object) - Fetched post data from API
-- `showDate` (boolean) - Toggle state for timestamp
-- `theme` (string) - Theme selection: "light", "dim", or "dark"
-- `borderRadius` (string) - Border radius: "0px", "8px", "16px", "20px", or "24px"
-- `shadowIntensity` (string) - Shadow: "none", "light", "medium", or "strong"
-- `isLoading` (boolean) - Loading state
-- `errorMessage` (string) - Error message if fetch fails
-
-### Using Variants for Presets
-
-Create Framer variants for preset styles:
-
-1. Select your card frame
-2. Create variants in the properties panel
-3. Name them: "Default", "Minimal", "Bold", etc.
-4. Adjust styling for each variant
-5. Let users switch between presets with a dropdown/buttons
-
----
-
 ## Development Roadmap
 
-### ✅ MVP (Current - 2-3 Days)
+### ✅ MVP (Complete)
+- [x] Next.js app with TypeScript and Tailwind CSS v4
 - [x] Vercel API scraper endpoint with Cheerio
-- [x] Framer code components (API Fetcher, PNG Exporter)
-- [ ] Framer UI design (input, preview, controls)
-- [ ] Real-time preview updates
-- [ ] PNG export functionality
-- [ ] 1-2 preset templates
-- [ ] Error handling and loading states
-- [ ] Deploy to Framer
+- [x] Interactive card resize controls (width + border radius)
+- [x] Three theme system (light/dim/dark)
+- [x] Floating toolbar with cycle buttons
+- [x] Real-time preview updates
+- [x] PNG export functionality (2x resolution)
+- [x] Brad Radius placeholder content
+- [x] Error handling and loading states
+- [x] Tooltips showing current values
 
 ### 🔮 Phase 2 (Post-MVP)
 - [ ] Web component for embeds
 - [ ] Copy embed code feature
 - [ ] CDN hosting for web component
 - [ ] More preset templates
-- [ ] Advanced customization options
-- [ ] Save/share preset styles
+- [ ] Save/share custom styles
+- [ ] URL parameter for pre-configured cards
 
 ### 🚀 Future Enhancements
 - [ ] Font selection/typography controls
 - [ ] Gradient backgrounds
-- [ ] Dark mode
-- [ ] Batch processing
-- [ ] User accounts
-- [ ] Figma/design tool integration
+- [ ] Custom color pickers
+- [ ] Batch processing multiple posts
+- [ ] User accounts and saved presets
+- [ ] Figma plugin integration
 
 ---
 
@@ -286,9 +225,10 @@ Create Framer variants for preset styles:
 - Check if the post is public and accessible
 - Try updating the scraper logic in [`api/scrape-post.js`](api/scrape-post.js)
 
-**Problem:** CORS errors in Framer
-- Make sure your Vercel API has correct CORS headers (already configured in the code)
-- Verify you're using the correct API endpoint URL
+**Problem:** API connection errors
+- Verify `NEXT_PUBLIC_API_ENDPOINT` in `web/.env.local`
+- Make sure the Vercel API is deployed and accessible
+- Check browser console for CORS errors
 
 **Problem:** "Post not found or deleted"
 - The post may be private, deleted, or from a protected account
@@ -296,22 +236,27 @@ Create Framer variants for preset styles:
 
 ### Export Issues
 
-**Problem:** PNG export not working
-- Ensure html-to-image is installed in Framer
-- Check that your card frame has the correct name/ID set
-- Make sure the frame is visible on the canvas when exporting
+**Problem:** PNG export fails
+- Check that the card is fully visible on screen
+- Browser console will show specific error messages
+- Try a different browser (Chrome/Edge recommended)
 
 **Problem:** Exported PNG is blank
-- The element may not be fully rendered when export is triggered
-- Add a small delay before export (100-200ms)
-- Check browser console for errors
+- Ensure card has loaded completely before exporting
+- Check that external images (avatars) have loaded
+- html2canvas may have CORS issues with some images
 
-### Framer Integration Issues
+### Development Issues
 
-**Problem:** Can't find the element to export
-- Make sure your card frame has a name set in Framer properties
-- Use the exact frame name in the `targetId` prop
-- The exporter looks for both `id` and `data-framer-name` attributes
+**Problem:** Module not found errors
+- Make sure you're in the `web` directory: `cd web`
+- Run `npm install` to install all dependencies
+- Delete `node_modules` and `.next` folders, then reinstall
+
+**Problem:** Tailwind styles not working
+- Tailwind v4 uses `@import "tailwindcss"` syntax
+- Make sure `postcss.config.mjs` is configured correctly
+- Check that `@tailwindcss/postcss` is installed
 
 ---
 
@@ -319,9 +264,10 @@ Create Framer variants for preset styles:
 
 ### Limitations
 
-- **No real metrics**: Likes, retweets, and replies require JavaScript rendering or X API access. MVP returns 0 for these values.
-- **Structure changes**: If X updates their HTML structure, the scraper may break and need updates.
-- **Rate limiting**: Consider adding rate limiting to prevent abuse if this becomes public.
+- **No real metrics**: Likes, retweets, and replies require JavaScript rendering or X API access
+- **Structure changes**: If X updates their HTML structure, the scraper may break and need updates
+- **Rate limiting**: Consider adding rate limiting if this becomes public
+- **Protected accounts**: Cannot scrape posts from private/protected accounts
 
 ### Upgrading to Puppeteer (Optional)
 
@@ -335,13 +281,14 @@ If you need real metrics or more robust scraping:
 
 ## Contributing
 
-This is a solo project for now, but if you want to add features:
+This is a personal project, but contributions are welcome:
 
-1. Create a feature branch: `git checkout -b feature/your-feature`
-2. Make changes
-3. Test thoroughly
-4. Commit: `git commit -m "Add your feature"`
-5. Push: `git push origin feature/your-feature`
+1. Fork the repository
+2. Create a feature branch: `git checkout -b feature/your-feature`
+3. Make changes and test thoroughly
+4. Commit with descriptive messages: `git commit -m "Add your feature"`
+5. Push to your fork: `git push origin feature/your-feature`
+6. Open a Pull Request
 
 ---
 
@@ -353,16 +300,20 @@ MIT License - feel free to use and modify as needed.
 
 ## Resources
 
-- [Framer Documentation](https://www.framer.com/developers/)
+- [Next.js Documentation](https://nextjs.org/docs)
 - [Vercel Documentation](https://vercel.com/docs)
+- [Tailwind CSS v4](https://tailwindcss.com/docs)
+- [Base UI Components](https://base-ui.com/)
 - [Cheerio Documentation](https://cheerio.js.org/)
-- [html-to-image Documentation](https://github.com/bubkoo/html-to-image)
+- [html2canvas](https://html2canvas.hertzen.com/)
 
 ---
 
 ## Questions?
 
-Check the [PRODUCT.md](PRODUCT.md) file for full product specification and context.
+- Check the [web/README.md](web/README.md) for detailed web app documentation
+- See [PRODUCT.md](PRODUCT.md) for full product specification
+- Review [QUICKSTART.md](QUICKSTART.md) for step-by-step setup guide
 
 ---
 
