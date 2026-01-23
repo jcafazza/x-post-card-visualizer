@@ -124,6 +124,11 @@ export async function POST(request: NextRequest) {
     try {
       console.log(`Launching browser for ${url}... environment: ${isLocal ? 'local' : 'production'}`)
 
+      // `@sparticuz/chromium-min`'s `headless` type can differ across versions.
+      // Puppeteer expects `true` or `"shell"`; we normalize to a safe value.
+      const chromiumHeadless = (chromium as any).headless as unknown
+      const headless: true | 'shell' = chromiumHeadless === 'shell' ? 'shell' : true
+
       const options = isLocal 
         ? {
             args: ['--no-sandbox', '--disable-setuid-sandbox'],
@@ -136,7 +141,7 @@ export async function POST(request: NextRequest) {
             args: chromium.args,
             defaultViewport: chromium.defaultViewport,
             executablePath: await chromium.executablePath('https://github.com/Sparticuz/chromium/releases/download/v132.0.0/chromium-v132.0.0-pack.tar'),
-            headless: chromium.headless === 'true' || chromium.headless === true || (chromium.headless as any) === 'new' ? (chromium.headless as any) : true,
+            headless,
           }
 
       // Explicitly cast options as any to bypass strict LaunchOptions typing which varies between local/prod deps
