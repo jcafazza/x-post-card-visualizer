@@ -310,14 +310,44 @@ function cleanTweetText(input: string, opts: { hasImages: boolean; mediaShortUrl
 
 async function fetchViaSyndication(tweetId: string): Promise<SyndicationTweet> {
   // This endpoint is fast and avoids running a headless browser in production.
-  const endpoint = `https://cdn.syndication.twimg.com/tweet-result?id=${encodeURIComponent(tweetId)}&lang=en`
-  const response = await fetch(endpoint, {
+  // Twitter/X now requires a token param for reliable responses; without it
+  // the endpoint can return `{}` with HTTP 200.
+  // Reverse engineered by Vercel's `react-tweet`.
+  const getToken = (id: string) =>
+    ((Number(id) / 1e15) * Math.PI)
+      .toString(6 ** 2)
+      .replace(/(0+|\.)/g, '')
+
+  const url = new URL('https://cdn.syndication.twimg.com/tweet-result')
+  url.searchParams.set('id', tweetId)
+  url.searchParams.set('lang', 'en')
+  url.searchParams.set('token', getToken(tweetId))
+
+  const featuresCookie = [
+    'tfw_timeline_list:',
+    'tfw_follower_count_sunset:true',
+    'tfw_tweet_edit_backend:on',
+    'tfw_refsrc_session:on',
+    'tfw_fosnr_soft_interventions_enabled:on',
+    'tfw_show_birdwatch_pivots_enabled:on',
+    'tfw_show_business_verified_badge:on',
+    'tfw_duplicate_scribes_to_settings:on',
+    'tfw_use_profile_image_shape_enabled:on',
+    'tfw_show_blue_verified_badge:on',
+    'tfw_legacy_timeline_sunset:true',
+    'tfw_show_gov_verified_badge:on',
+    'tfw_show_business_affiliate_badge:on',
+    'tfw_tweet_edit_frontend:on',
+  ].join(';')
+
+  const response = await fetch(url.toString(), {
     headers: {
       // Some CDNs behave better with a real UA.
       'User-Agent':
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       Referer: 'https://platform.twitter.com/',
       Accept: 'application/json',
+      Cookie: `features=${featuresCookie}`,
     },
     cache: 'no-store',
   })
@@ -527,8 +557,9 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           author: {
             name: oembed.author_name || username,
-            handle: oembed.author_name ? `@${oembed.author_name}` : `@${username}`,
-            avatar: proxyImageUrl(`https://unavatar.io/twitter/${oembed.author_name || username}`),
+            // `author_name` can include spaces/emojis; always use the URL username for handle + avatar lookup.
+            handle: `@${username}`,
+            avatar: proxyImageUrl(`https://unavatar.io/twitter/${username}`),
             verified: false,
           },
           content: { text, images: [] },
