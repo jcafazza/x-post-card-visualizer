@@ -127,7 +127,6 @@ export async function POST(request: NextRequest) {
       const options = isLocal 
         ? {
             args: ['--no-sandbox', '--disable-setuid-sandbox'],
-            // Path to local Chrome/Chromium executable
             executablePath: process.platform === 'darwin' 
               ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
               : '/usr/bin/google-chrome',
@@ -137,10 +136,11 @@ export async function POST(request: NextRequest) {
             args: chromium.args,
             defaultViewport: chromium.defaultViewport,
             executablePath: await chromium.executablePath('https://github.com/Sparticuz/chromium/releases/download/v132.0.0/chromium-v132.0.0-pack.tar'),
-            headless: chromium.headless,
+            headless: chromium.headless === 'true' || chromium.headless === true || (chromium.headless as any) === 'new' ? (chromium.headless as any) : true,
           }
 
-      browser = await puppeteer.launch(options)
+      // Explicitly cast options as any to bypass strict LaunchOptions typing which varies between local/prod deps
+      browser = await puppeteer.launch(options as any)
       const page = await browser.newPage()
 
       // Set a realistic viewport and user agent
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
       // Navigate to the post
       await page.goto(url, {
         waitUntil: 'networkidle2',
-        timeout: 20000 // Increased timeout for serverless
+        timeout: 25000 // Increased timeout for serverless cold starts
       })
 
       // Wait for the tweet content to load
