@@ -10,13 +10,12 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",
-    "@tailwindcss/postcss": "^4.1.18",
+    "@sparticuz/chromium-min": "^132.0.0",
+    "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.10.5",
     "@types/react": "^19.0.6",
     "@types/react-dom": "^19.0.2",
-    "autoprefixer": "^10.4.20",
     "bloom-menu": "^0.1.0",
-    "cheerio": "^1.1.2",
     "framer-motion": "^12.29.0",
     "html2canvas": "^1.4.1",
     "lucide-react": "^0.562.0",
@@ -24,10 +23,8 @@
     "postcss": "^8.4.49",
     "prism-react-renderer": "^2.4.1",
     "puppeteer-core": "^24.1.1",
-    "@sparticuz/chromium-min": "^132.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "tailwindcss": "^3.4.17",
     "typescript": "^5.7.3"
   }
 }
