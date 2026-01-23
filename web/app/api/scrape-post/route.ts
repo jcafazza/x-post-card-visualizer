@@ -100,9 +100,70 @@ type SyndicationTweet = {
     screen_name?: string
     profile_image_url_https?: string
     verified?: boolean
+    is_blue_verified?: boolean
   }
   photos?: Array<{ url?: string }>
-  mediaDetails?: Array<{ media_url_https?: string }>
+  video?: {
+    poster?: string
+    variants?: Array<{ url?: string; content_type?: string }>
+  }
+  mediaDetails?: Array<{ 
+    media_url_https?: string
+    type?: string
+  }>
+}
+
+/**
+ * Normalizes an X avatar URL to get the high-resolution version (400x400).
+ * Also strips session-based query parameters that can cause image loading failures.
+ */
+function normalizeAvatarUrl(url?: string): string | undefined {
+  if (!url) return undefined
+  
+  // 1. Strip query parameters (they often contain session tokens that expire)
+  const baseUrl = url.split('?')[0]
+  
+  // 2. Replace common size suffixes with _400x400
+  // Suffixes: _normal (48x48), _bigger (73x73), _mini (24x24)
+  const normalized = baseUrl.replace(/_(normal|bigger|mini)(\.(jpg|png|jpeg|webp))$/i, '_400x400$2')
+  
+  return normalized
+}
+
+/**
+ * Extracts high-quality images from the syndication response.
+ */
+function extractMedia(data: SyndicationTweet): string[] {
+  const images: string[] = []
+
+  // 1. Try photos array (standard images)
+  if (data.photos && Array.isArray(data.photos)) {
+    data.photos.forEach((p) => {
+      if (p?.url) images.push(p.url)
+    })
+  }
+
+  // 2. Try mediaDetails (often contains video thumbnails/gifs or high-res variants)
+  if (data.mediaDetails && Array.isArray(data.mediaDetails)) {
+    data.mediaDetails.forEach((m) => {
+      if (m?.media_url_https) images.push(m.media_url_https)
+    })
+  }
+
+  // 3. Try video poster as a fallback for video/gif posts
+  if (images.length === 0 && data.video?.poster) {
+    images.push(data.video.poster)
+  }
+
+  // Deduplicate and normalize URLs to get the highest quality
+  return Array.from(new Set(images)).map((url) => {
+    if (url.includes('pbs.twimg.com/media/')) {
+      // Ensure we get the large version and prefer jpg format for compatibility
+      const baseUrl = url.split('?')[0]
+      return `${baseUrl}?format=jpg&name=large`
+    }
+    return url
+  })
 }
 
 async function fetchViaSyndication(tweetId: string): Promise<SyndicationTweet> {
@@ -214,19 +275,20 @@ export async function POST(request: NextRequest) {
     try {
       const data = await fetchViaSyndication(tweetId)
       const text = data.text ?? ''
-      const images = Array.isArray(data.photos)
-        ? (data.photos.map((p) => p?.url).filter(Boolean) as string[])
-        : Array.isArray(data.mediaDetails)
-          ? (data.mediaDetails.map((m) => m?.media_url_https).filter(Boolean) as string[])
-          : []
+      
+      // Use the improved media extraction
+      const images = extractMedia(data)
 
       const name = data.user?.name || username
       const handle = data.user?.screen_name ? `@${data.user.screen_name}` : `@${username}`
-      const avatar = data.user?.profile_image_url_https || `https://unavatar.io/twitter/${username}`
-      const verified = Boolean(data.user?.verified)
+      
+      // Use the improved avatar normalization
+      const avatar = normalizeAvatarUrl(data.user?.profile_image_url_https) || `https://unavatar.io/twitter/${username}`
+      
+      const verified = Boolean(data.user?.verified || data.user?.is_blue_verified)
       const timestamp = data.created_at ? new Date(data.created_at).toISOString() : new Date().toISOString()
 
-      if (text) {
+      if (text || images.length > 0) {
         return NextResponse.json({
           author: { name, handle, avatar, verified },
           content: { text, images },
@@ -327,7 +389,11 @@ export async function POST(request: NextRequest) {
 
         // Get avatar
         const avatarImg = article.querySelector('img[src*="profile_images"]') as HTMLImageElement
-        const avatar = avatarImg?.src?.replace('_normal', '_400x400') || ''
+        let avatar = avatarImg?.src || ''
+        if (avatar) {
+          // Normalize to 400x400 and strip query params
+          avatar = avatar.split('?')[0].replace(/_(normal|bigger|mini)(\.(jpg|png|jpeg|webp))$/i, '_400x400$2')
+        }
 
         // Check for verified badge
         const verified = !!article.querySelector('[data-testid="icon-verified"]')
@@ -338,13 +404,24 @@ export async function POST(request: NextRequest) {
 
         // Get images
         const images: string[] = []
+        // Look for tweet photos
         const imageEls = article.querySelectorAll('[data-testid="tweetPhoto"] img') as NodeListOf<HTMLImageElement>
         imageEls.forEach(img => {
           if (img.src && !img.src.includes('profile_images')) {
-            const highQualitySrc = img.src.replace(/&name=\w+/, '&name=large')
-            images.push(highQualitySrc)
+            // Normalize to large version
+            const baseUrl = img.src.split('?')[0]
+            images.push(`${baseUrl}?format=jpg&name=large`)
           }
         })
+        
+        // If no photos, look for video posters
+        if (images.length === 0) {
+          const videoPoster = article.querySelector('video')?.getAttribute('poster')
+          if (videoPoster) {
+            const baseUrl = videoPoster.split('?')[0]
+            images.push(`${baseUrl}?format=jpg&name=large`)
+          }
+        }
 
         // Get timestamp
         const timeEl = article.querySelector('time')
