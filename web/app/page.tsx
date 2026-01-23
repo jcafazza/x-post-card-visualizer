@@ -6,7 +6,7 @@ import InteractivePostCard from '@/components/InteractivePostCard'
 import Toolbar from '@/components/Toolbar'
 import URLInput from '@/components/URLInput'
 import { PostData, CardSettings } from '@/types/post'
-import { getRandomPlaceholder, getDefaultPlaceholder } from '@/lib/placeholder'
+import { getDefaultPlaceholder } from '@/lib/placeholder'
 import { getThemeStyles } from '@/lib/themes'
 import {
   ANIMATION_STANDARD,
