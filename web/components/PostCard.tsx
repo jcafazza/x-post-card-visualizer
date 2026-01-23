@@ -120,7 +120,6 @@ export default function PostCard({ post, settings }: PostCardProps) {
                 className="relative w-full overflow-hidden rounded-2xl"
                 style={{
                   aspectRatio: post.content.images.length === 1 ? '16/9' : '1',
-                  boxShadow: `inset 0 0 0 1px ${theme.imageInnerStroke}`,
                 }}
               >
                 <img
@@ -131,6 +130,11 @@ export default function PostCard({ post, settings }: PostCardProps) {
                   loading="eager"
                   crossOrigin="anonymous"
                   referrerPolicy="no-referrer"
+                />
+                {/* Subtle inner stroke overlay (stays visible above the image) */}
+                <div
+                  className="pointer-events-none absolute inset-0 rounded-2xl"
+                  style={{ boxShadow: `inset 0 0 0 1px ${theme.imageInnerStroke}` }}
                 />
               </div>
             ))}
