@@ -69,6 +69,7 @@ export async function exportElementToPNG(
   wrapper.style.display = 'block'
   
   // Clone the element deeply to preserve all content, structure, and classes
+  // Keep it simple - let html2canvas render naturally with the existing classes
   const clonedElement = element.cloneNode(true) as HTMLElement
   clonedElement.id = `${element.id}-export-clone`
   
@@ -90,16 +91,27 @@ export async function exportElementToPNG(
     el.classList.add('whitespace-normal', 'break-words')
   })
   
-  // Remove overflow-hidden classes and maxHeight constraints that might clip content
+  // Handle overflow-hidden: preserve for rounded corners, remove for others
   const overflowElements = clonedElement.querySelectorAll('.overflow-hidden')
   overflowElements.forEach((el) => {
     const elHtml = el as HTMLElement
-    elHtml.classList.remove('overflow-hidden')
-    elHtml.style.overflow = 'visible'
-    // Remove maxHeight constraints that might clip content
-    const computedStyle = window.getComputedStyle(elHtml)
-    if (computedStyle.maxHeight && computedStyle.maxHeight !== 'none') {
-      elHtml.style.maxHeight = 'none'
+    // Check if element has rounded corners - these need overflow-hidden to work
+    const hasRoundedCorners = elHtml.classList.contains('rounded-full') || 
+                             elHtml.classList.contains('rounded-2xl') ||
+                             elHtml.classList.contains('rounded-card-0') ||
+                             elHtml.classList.contains('rounded-card-8') ||
+                             elHtml.classList.contains('rounded-card-16') ||
+                             elHtml.classList.contains('rounded-card-20') ||
+                             elHtml.classList.contains('rounded-card-24')
+    
+    // Only remove overflow-hidden if element doesn't have rounded corners
+    if (!hasRoundedCorners) {
+      elHtml.classList.remove('overflow-hidden')
+      elHtml.style.overflow = 'visible'
+    }
+    // If it has rounded corners, ensure overflow-hidden is preserved
+    else {
+      elHtml.style.overflow = 'hidden'
     }
   })
   
@@ -132,32 +144,57 @@ export async function exportElementToPNG(
       removeContainer: true,
       imageTimeout: 15000,
       onclone: (_clonedDoc, clonedEl) => {
-        // Ensure the cloned element has no shadow and no clipping
+        // Minimal modifications - only what's absolutely necessary
         const cloned = clonedEl as HTMLElement
         if (cloned) {
           cloned.style.boxShadow = 'none'
           cloned.style.overflow = 'visible'
           cloned.style.width = `${rect.width}px`
-          cloned.style.height = 'auto' // Allow natural height
+          cloned.style.height = 'auto'
           
-          // Process all descendants to remove shadows and clipping
+          // Process all descendants - minimal changes only
           const allDescendants = cloned.querySelectorAll('*')
           allDescendants.forEach((desc) => {
             const descEl = desc as HTMLElement
             if (descEl.style) {
-              // Remove shadows
+              // Remove shadows only
               descEl.style.boxShadow = 'none'
               
-              // Remove overflow constraints
-              if (descEl.classList.contains('overflow-hidden')) {
-                descEl.classList.remove('overflow-hidden')
-              }
-              descEl.style.overflow = 'visible'
+              // Check if element has rounded corners (avatar or image container)
+              const hasRoundedCorners = descEl.classList.contains('rounded-full') || 
+                                       descEl.classList.contains('rounded-2xl') ||
+                                       descEl.classList.contains('rounded-card-0') ||
+                                       descEl.classList.contains('rounded-card-8') ||
+                                       descEl.classList.contains('rounded-card-16') ||
+                                       descEl.classList.contains('rounded-card-20') ||
+                                       descEl.classList.contains('rounded-card-24')
               
-              // Remove maxHeight constraints that might clip content
-              const computedMaxHeight = window.getComputedStyle(descEl).maxHeight
-              if (computedMaxHeight && computedMaxHeight !== 'none' && computedMaxHeight !== '100%') {
-                descEl.style.maxHeight = 'none'
+              // Only modify overflow if element doesn't have rounded corners
+              // Rounded corners need overflow-hidden to clip content properly
+              // Don't touch flex containers - let them render naturally
+              const isFlexContainer = descEl.classList.contains('flex') || 
+                                     window.getComputedStyle(descEl).display === 'flex'
+              
+              if (!hasRoundedCorners && !isFlexContainer) {
+                if (descEl.classList.contains('overflow-hidden')) {
+                  descEl.classList.remove('overflow-hidden')
+                }
+                descEl.style.overflow = 'visible'
+              }
+              // If element has rounded corners, ensure overflow-hidden is preserved
+              else if (hasRoundedCorners) {
+                descEl.style.overflow = 'hidden'
+              }
+              // For flex containers, don't modify anything - preserve natural rendering
+              
+              // Remove maxHeight constraints that might clip content (but preserve for images)
+              const isImageContainer = descEl.classList.contains('rounded-2xl') || 
+                                      descEl.querySelector('img') !== null
+              if (!isImageContainer) {
+                const computedMaxHeight = window.getComputedStyle(descEl).maxHeight
+                if (computedMaxHeight && computedMaxHeight !== 'none' && computedMaxHeight !== '100%') {
+                  descEl.style.maxHeight = 'none'
+                }
               }
               
               // Remove height constraints if they're causing clipping
