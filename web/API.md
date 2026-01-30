@@ -1,6 +1,6 @@
 # API Documentation
 
-This document describes the API routes available in the X Post Card Builder application.
+This document describes the API routes available in the X Post Card Visualizer application.
 
 ## Base URL
 

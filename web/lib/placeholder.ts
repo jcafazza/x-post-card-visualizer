@@ -18,6 +18,9 @@ const defaultPlaceholder: PostData = {
   timestamp: '2026-01-22T23:37:00Z',
 }
 
+/** URL param value for sharing the default (Brad Radius) placeholder post. */
+export const DEFAULT_PLACEHOLDER_SHARE_PARAM = '__default__'
+
 /**
  * Returns the default placeholder post data.
  * Used when no post has been imported yet to show a demo card.

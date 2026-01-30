@@ -22,8 +22,10 @@ import {
   ANIMATION_DELIBERATE,
   EASING_BOUNCE,
   EASING_STANDARD,
-  ERROR_MESSAGE_DISPLAY_DURATION
+  ERROR_MESSAGE_DISPLAY_DURATION,
+  THEME_TRANSITION,
 } from '@/constants/ui'
+import { DEFAULT_PLACEHOLDER_SHARE_PARAM } from '@/lib/placeholder'
 
 interface ToolbarProps {
   settings: CardSettings
@@ -175,13 +177,6 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
   const iconClasses = "w-5 h-5"
   const buttonBase = "w-11 h-11 rounded-full cursor-pointer flex items-center justify-center border outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
 
-  // Share button style - parameters reserved for future hover/focus states
-  const getShareButtonStyle = (_isHovered = false, _isFocused = false) => ({
-    backgroundColor: 'transparent',
-    border: 'none',
-    color: currentTheme.textSecondary,
-  })
-
   const menuItemBg = settings.theme === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.1)'
   const menuText = settings.theme === 'light' ? 'text-neutral-900' : 'text-neutral-50'
   const menuHoverBg = settings.theme === 'light' ? 'hover:bg-black/5' : 'hover:bg-white/10'
@@ -202,7 +197,7 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
       borderColor: isHovered ? currentTheme.buttonBorderHover : currentTheme.buttonBorderDefault,
       color: isActive ? currentTheme.textPrimary : currentTheme.textSecondary,
       boxShadow: currentTheme.shadowMedium,
-      transition: `border-color ${ANIMATION_MICRO}ms ${EASING_STANDARD}, box-shadow ${ANIMATION_MICRO}ms ${EASING_STANDARD}`,
+      transition: THEME_TRANSITION,
       animationName: bounceName,
       animationDuration: bounceName ? `${ANIMATION_MICRO}ms` : undefined,
       animationTimingFunction: bounceName ? EASING_BOUNCE : undefined,
@@ -213,11 +208,11 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
 
   /**
    * Constructs the shareable URL with all current settings as query parameters.
+   * Uses default placeholder param when no post URL (Brad Radius demo).
    */
-  const buildShareUrl = () => {
-    if (!sourceUrl) return null
+  const buildShareUrl = (): string => {
     const shareUrl = new URL('/share', window.location.origin)
-    shareUrl.searchParams.set('url', sourceUrl)
+    shareUrl.searchParams.set('url', sourceUrl ?? DEFAULT_PLACEHOLDER_SHARE_PARAM)
     shareUrl.searchParams.set('theme', settings.theme)
     shareUrl.searchParams.set('shadow', settings.shadowIntensity)
     shareUrl.searchParams.set('cardWidth', String(settings.cardWidth))
@@ -330,6 +325,7 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
                     : (hoveredButton === 'share' ? currentTheme.buttonBorderHover : currentTheme.buttonBorderDefault)
                 }`,
                 boxShadow: isShareMenuOpen ? currentTheme.shadowDeep : currentTheme.shadowMedium,
+                transition: THEME_TRANSITION,
                 overflow: 'hidden',
                 zIndex: 1001,
               }}
@@ -344,10 +340,13 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
                     onBlur={() => setFocusedButton(null)}
                     className={buttonBase}
                     style={{
-                      ...getShareButtonStyle(hoveredButton === 'share', focusedButton === 'share'),
+                      ...getButtonStyle('share', false, hoveredButton === 'share', focusedButton === 'share'),
                       backgroundColor: 'transparent',
-                      border: 'none',
+                      borderWidth: 0,
+                      borderStyle: 'solid',
+                      borderColor: 'transparent',
                       boxShadow: 'none',
+                      transition: THEME_TRANSITION,
                     }}
                     aria-label="Share"
                   >
@@ -357,25 +356,8 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
 
               <BloomMenu.Content className="p-2">
                 <BloomMenu.Item
-                  disabled={isExporting}
-                  onSelect={handleExportAsPNG}
-                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap ${menuText} ${menuHoverBg} disabled:opacity-50`}
-                >
-                  {isExporting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.8} aria-hidden="true" />
-                  ) : isExported ? (
-                    <Check className="w-4 h-4" strokeWidth={1.8} aria-hidden="true" />
-                  ) : (
-                    <Download className="w-4 h-4" strokeWidth={1.8} aria-hidden="true" />
-                  )}
-                  <span className="flex-1">{isExported ? 'Exported!' : 'Export as PNG'}</span>
-                </BloomMenu.Item>
-
-                <BloomMenu.Item
-                  disabled={!sourceUrl}
                   onSelect={async () => {
                     const urlToCopy = buildShareUrl()
-                    if (!urlToCopy) return
                     await copyTextToClipboard(urlToCopy)
                     
                     // Visual feedback in the menu
@@ -394,6 +376,22 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
                     <Link className="w-4 h-4" strokeWidth={1.8} aria-hidden="true" />
                   )}
                   <span className="flex-1">{isCopied ? 'Copied!' : 'Share link'}</span>
+                </BloomMenu.Item>
+
+                <BloomMenu.Item
+                  disabled={isExporting}
+                  onSelect={handleExportAsPNG}
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap ${menuText} ${menuHoverBg} disabled:opacity-50`}
+                >
+                  {isExporting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.8} aria-hidden="true" />
+                  ) : isExported ? (
+                    <Check className="w-4 h-4" strokeWidth={1.8} aria-hidden="true" />
+                  ) : (
+                    <Download className="w-4 h-4" strokeWidth={1.8} aria-hidden="true" />
+                  )}
+                  <span className="flex-1">{isExported ? 'Exported!' : 'Export as PNG'}</span>
+                  {!isExported && <span className="text-[11px] font-semibold opacity-60">Beta</span>}
                 </BloomMenu.Item>
 
                 <div className="h-px my-1 mx-1" style={{ backgroundColor: currentTheme.border, opacity: 0.6 }} />

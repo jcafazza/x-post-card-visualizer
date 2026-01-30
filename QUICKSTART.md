@@ -1,6 +1,6 @@
-# Quickstart
+# Quickstart — X Post Card Visualizer
 
-Get X Post Card Builder running locally, then deploy.
+Get X Post Card Visualizer running locally, then deploy.
 
 ## Local
 
@@ -14,8 +14,8 @@ Open [http://localhost:3000](http://localhost:3000). Paste a public `x.com/.../s
 
 ## Deploy (Vercel)
 
-1. Import the repo as a **Next.js** project
-2. Set **Root Directory** to `web`
-3. Deploy
+1. Import the repo as a **Next.js** project  
+2. Set **Root Directory** to `web`  
+3. Deploy  
 
 UI and API routes (`/api/scrape-post`, `/api/image`) ship together.

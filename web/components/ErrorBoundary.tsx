@@ -2,7 +2,7 @@
 
 import { Component, ReactNode } from 'react'
 import { getThemeStyles } from '@/lib/themes'
-import { ANIMATION_DELIBERATE, EASING_ELEGANT } from '@/constants/ui'
+import { THEME_TRANSITION } from '@/constants/ui'
 
 interface ErrorBoundaryProps {
   children: ReactNode
@@ -62,7 +62,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             backgroundColor: theme.bg,
             borderColor: theme.border,
             color: theme.textPrimary,
-            transition: `background-color ${ANIMATION_DELIBERATE}ms ${EASING_ELEGANT}, border-color ${ANIMATION_DELIBERATE}ms ${EASING_ELEGANT}, color ${ANIMATION_DELIBERATE}ms ${EASING_ELEGANT}`,
+            transition: THEME_TRANSITION,
           }}
         >
           <h2 className="text-lg font-semibold mb-2" style={{ color: theme.textPrimary }}>
@@ -83,13 +83,19 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             style={{
               backgroundColor: theme.accent,
               color: '#FFFFFF',
-              transition: `background-color ${ANIMATION_DELIBERATE}ms ${EASING_ELEGANT}`,
+              transition: THEME_TRANSITION,
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.opacity = '0.9'
+              try {
+                const el = e?.currentTarget
+                if (el) el.style.opacity = '0.9'
+              } catch (_) {}
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.opacity = '1'
+              try {
+                const el = e?.currentTarget
+                if (el) el.style.opacity = '1'
+              } catch (_) {}
             }}
           >
             Refresh Page

@@ -1,8 +1,8 @@
 {
-  "name": "x-post-card-builder-workspace",
+  "name": "x-post-card-visualizer-workspace",
   "version": "1.0.0",
   "private": true,
-  "description": "Workspace root for X Post Card Builder. All dependencies are in web/package.json",
+  "description": "Workspace root for X Post Card Visualizer. All dependencies are in web/package.json",
   "scripts": {
     "dev": "cd web && npm run dev",
     "build": "cd web && npm run build",

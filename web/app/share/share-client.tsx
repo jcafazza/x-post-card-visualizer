@@ -3,23 +3,21 @@
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import InteractivePostCard from '@/components/InteractivePostCard'
-import AnimatedHandMetal from '@/components/AnimatedHandMetal'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import { fetchPostData } from '@/lib/api'
+import { getDefaultPlaceholder, DEFAULT_PLACEHOLDER_SHARE_PARAM } from '@/lib/placeholder'
 import { getThemeStyles } from '@/lib/themes'
 import { isShadow, isTheme } from '@/types/post'
 import type { CardSettings, PostData, ShadowIntensity, Theme } from '@/types/post'
 import {
-  ANIMATION_DELIBERATE,
-  EASING_ELEGANT,
-  EASING_STANDARD,
   ENTRANCE_DELAY_CARD,
+  THEME_TRANSITION,
   FOOTER_FADE_HEIGHT,
   FOOTER_FADE_OPACITY,
   FOOTER_FADE_STOP,
+  FOOTER_SCROLL_CLEAR_EXTRA,
   SHARE_LOADING_MIN_MS,
   SHARE_PHASE2_DELAY_MS,
-  SHARE_PHASE2_DURATION_MS,
 } from '@/constants/ui'
 import { hexToRgba } from '@/lib/utils'
 import {
@@ -114,6 +112,12 @@ function SharePageContent({
         setPost(null)
         return
       }
+      if (sourceUrl === DEFAULT_PLACEHOLDER_SHARE_PARAM) {
+        setPost(getDefaultPlaceholder())
+        setError(null)
+        setIsLoading(false)
+        return
+      }
       const startedAt = Date.now()
       setIsLoading(true)
       setError(null)
@@ -178,18 +182,7 @@ function SharePageContent({
   }, [cardRevealed, prefersReducedMotion])
 
   if (isLoading) {
-    return (
-      <div
-        className="flex flex-col items-center gap-4 animate-in fade-in zoom-in"
-        style={{
-          color: theme.textSecondary,
-          transition: `color ${ANIMATION_DELIBERATE}ms ${EASING_STANDARD}`,
-        }}
-      >
-        <AnimatedHandMetal size={40} />
-        <span className="text-sm font-medium">Vibin&apos; &amp; cookin&apos;…</span>
-      </div>
-    )
+    return <div aria-hidden className="min-h-[40vh]" />
   }
   if (error) {
     return (
@@ -197,7 +190,7 @@ function SharePageContent({
         className="text-sm font-medium"
         style={{
           color: theme.error,
-          transition: `color ${ANIMATION_DELIBERATE}ms ${EASING_STANDARD}`,
+          transition: THEME_TRANSITION,
         }}
       >
         {error}
@@ -222,10 +215,9 @@ function SharePageContent({
         post={post}
         settings={settings}
         onSettingsChange={setSettings}
-        sourceUrl={sourceUrl ?? undefined}
+        sourceUrl={sourceUrl === DEFAULT_PLACEHOLDER_SHARE_PARAM ? undefined : (sourceUrl ?? undefined)}
         lockLayout
         sharePhase2Revealed={phase2Revealed}
-        sharePhase2DurationMs={SHARE_PHASE2_DURATION_MS}
       />
     </div>
   )
@@ -276,41 +268,39 @@ export default function InteractiveSharePage() {
 
   if (parsed === null) {
     return (
-      <>
-        <div
-          className="flex flex-col items-center gap-4 animate-in fade-in zoom-in"
-          style={{
-            color: 'var(--share-muted, #666)',
-            transition: `color ${ANIMATION_DELIBERATE}ms ${EASING_STANDARD}`,
-          }}
-        >
-          <AnimatedHandMetal size={40} />
-          <span className="text-sm font-medium">Vibin&apos; &amp; cookin&apos;…</span>
-        </div>
+      <div style={{ paddingBottom: `${FOOTER_FADE_HEIGHT + FOOTER_SCROLL_CLEAR_EXTRA}px` }}>
+        <div aria-hidden className="min-h-[40vh]" />
         <SharePageFooter theme={footerTheme} />
-      </>
+      </div>
     )
   }
 
   return (
-    <>
+    <div style={{ paddingBottom: `${FOOTER_FADE_HEIGHT + FOOTER_SCROLL_CLEAR_EXTRA}px` }}>
       <SharePageContent sourceUrl={parsed.sourceUrl} initialSettings={parsed.initialSettings} />
       <SharePageFooter theme={footerTheme} />
-    </>
+    </div>
   )
 }
 
-/** Footer (fade plate + privacy note) using share page theme. */
+/** Footer (fade plate + privacy note) using share page theme. Solid color + mask so background-color transitions in sync with theme. */
 function SharePageFooter({ theme }: { theme: ReturnType<typeof getThemeStyles> }) {
   return (
     <>
       <div
         className="fixed bottom-0 left-0 right-0 pointer-events-none z-[40]"
-        style={{
-          height: FOOTER_FADE_HEIGHT,
-          background: `linear-gradient(to top, ${hexToRgba(theme.appBg, FOOTER_FADE_OPACITY)} 0%, ${hexToRgba(theme.appBg, FOOTER_FADE_OPACITY)} ${FOOTER_FADE_STOP * 100}%, ${hexToRgba(theme.appBg, 0)} 100%)`,
-        }}
+        style={{ height: FOOTER_FADE_HEIGHT }}
       >
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundColor: hexToRgba(theme.appBg, FOOTER_FADE_OPACITY),
+            transition: THEME_TRANSITION,
+            maskImage: `linear-gradient(to top, black 0%, black ${FOOTER_FADE_STOP * 100}%, transparent 100%)`,
+            WebkitMaskImage: `linear-gradient(to top, black 0%, black ${FOOTER_FADE_STOP * 100}%, transparent 100%)`,
+          }}
+        />
         <div
           style={{
             position: 'absolute',
@@ -328,7 +318,7 @@ function SharePageFooter({ theme }: { theme: ReturnType<typeof getThemeStyles> }
         style={{
           color: theme.textTertiary,
           opacity: 0.6,
-          transition: `color ${ANIMATION_DELIBERATE}ms ${EASING_ELEGANT}, opacity ${ANIMATION_DELIBERATE}ms ${EASING_ELEGANT}`,
+          transition: THEME_TRANSITION,
           pointerEvents: 'none',
         }}
       >

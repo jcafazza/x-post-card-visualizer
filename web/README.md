@@ -1,4 +1,4 @@
-# Web app
+# X Post Card Visualizer — Web App
 
 Next.js app (App Router, UI + API routes). All runtime and build tooling lives here.
 

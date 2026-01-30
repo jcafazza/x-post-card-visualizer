@@ -1,7 +1,8 @@
-# X Post Card Builder - Product Specification
+# X Post Card Visualizer — Product Specification
 
 ## Product Overview
-A web application that transforms X (Twitter) posts into beautiful, customizable visual cards. Users can paste any X post URL, customize the card design, and export as PNG or copy embed code for use on their websites.
+
+X Post Card Visualizer is a web application that transforms X (Twitter) posts into beautiful, customizable visual cards. Users can paste any X post URL, customize the card design, and export as PNG or copy embed code for use on their websites.
 
 ## Target Users
 - Designers

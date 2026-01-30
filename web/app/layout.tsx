@@ -5,7 +5,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'X Post Card Builder',
+  title: 'X Post Card Visualizer',
   description: 'Transform X posts into beautiful, customizable visual cards',
 }
 

@@ -2,7 +2,7 @@
 
 import { PostData, CardSettings, ShadowIntensity } from '@/types/post'
 import { getThemeStyles } from '@/lib/themes'
-import { ANIMATION_DELIBERATE, ANIMATION_STANDARD, EASING_STANDARD } from '@/constants/ui'
+import { ANIMATION_DELIBERATE, EASING_STANDARD, THEME_TRANSITION } from '@/constants/ui'
 
 interface PostCardProps {
   post: PostData
@@ -53,13 +53,26 @@ export default function PostCard({ post, settings, styleOverride }: PostCardProp
         borderStyle: 'solid',
         borderColor: theme.border,
         borderRadius: borderRadius,
-        transition: `height ${ANIMATION_DELIBERATE}ms ${EASING_STANDARD}, box-shadow ${ANIMATION_DELIBERATE}ms ${EASING_STANDARD}, border-color ${ANIMATION_STANDARD}ms ${EASING_STANDARD}, background-color ${ANIMATION_STANDARD}ms ${EASING_STANDARD}`,
+        transition: `${THEME_TRANSITION}, height ${ANIMATION_DELIBERATE}ms ${EASING_STANDARD}, box-shadow ${ANIMATION_DELIBERATE}ms ${EASING_STANDARD}`,
         ...styleOverride,
       }}
     >
-      {/* Author Section */}
-      <div className="flex items-start gap-3 mb-4">
-        <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
+      {/* Author Section: two sibling divs (avatar + name/handle), vertical centers aligned */}
+      <div
+        data-export="author-section"
+        className="mb-4"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+        }}
+      >
+        {/* Div 1: avatar only — fixed 48×48 so vertical center is well-defined */}
+        <div
+          data-export="author-avatar"
+          className="relative rounded-full overflow-hidden flex-shrink-0"
+          style={{ width: 48, height: 48 }}
+        >
           {post.author.avatar ? (
             <img
               src={post.author.avatar}
@@ -78,16 +91,25 @@ export default function PostCard({ post, settings, styleOverride }: PostCardProp
               {post.author.name.charAt(0)}
             </div>
           )}
-          {/* Subtle inner stroke overlay (match post image treatment) */}
           <div
             className="pointer-events-none absolute inset-0 rounded-full"
             style={{ boxShadow: `inset 0 0 0 1px ${theme.imageInnerStroke}` }}
           />
         </div>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-col" style={{ rowGap: 2 }}>
-            <div className="flex items-center gap-0.5">
+        {/* Div 2: name + handle — at least avatar height (48px), content vertically centered */}
+        <div
+          data-export="author-text-block"
+          className="flex-1 min-w-0"
+          style={{
+            minHeight: 48,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            rowGap: 2,
+          }}
+        >
+          <div className="flex items-center gap-0.5">
             <span
               className="font-bold text-base truncate"
               style={{ color: theme.textPrimary }}
@@ -104,14 +126,13 @@ export default function PostCard({ post, settings, styleOverride }: PostCardProp
                 <path d="M22.25 12c0-1.43-.88-2.67-2.19-3.34.46-1.39.2-2.9-.81-3.91s-2.52-1.27-3.91-.81c-.66-1.31-1.91-2.19-3.34-2.19s-2.67.88-3.33 2.19c-1.4-.46-2.91-.2-3.92.81s-1.26 2.52-.8 3.91c-1.31.67-2.2 1.91-2.2 3.34s.89 2.67 2.2 3.34c-.46 1.39-.21 2.9.8 3.91s2.52 1.26 3.91.81c.67 1.31 1.91 2.19 3.34 2.19s2.68-.88 3.34-2.19c1.39.45 2.9.2 3.91-.81s1.27-2.52.81-3.91c1.31-.67 2.19-1.91 2.19-3.34zm-11.71 4.2L6.8 12.46l1.41-1.42 2.26 2.26 4.8-5.23 1.47 1.36-6.2 6.77z" />
               </svg>
             )}
-            </div>
-            <span
-              className="text-sm"
-              style={{ color: theme.textSecondary }}
-            >
-              {post.author.handle}
-            </span>
           </div>
+          <span
+            className="text-sm"
+            style={{ color: theme.textSecondary }}
+          >
+            {post.author.handle}
+          </span>
         </div>
       </div>
 
@@ -137,17 +158,18 @@ export default function PostCard({ post, settings, styleOverride }: PostCardProp
               return (
                 <div
                   key={index}
+                  data-export="post-image-container"
                   className={`relative w-full overflow-hidden ${isThirdImage ? 'col-span-2' : ''}`}
                   style={{
                     borderRadius: imageBorderRadius,
                     aspectRatio: count === 1 ? '16/9' : isThirdImage ? '16/9' : '1',
-                    maxHeight: '180px',
                   }}
                 >
                   <img
                     src={image}
                     alt={`Post image ${index + 1}`}
-                    className="absolute inset-0 w-full h-full object-cover"
+                    className="absolute inset-0 w-full h-full"
+                    style={{ objectFit: 'cover', objectPosition: 'center' }}
                     draggable={false}
                     loading="eager"
                     crossOrigin="anonymous"

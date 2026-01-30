@@ -1,222 +1,208 @@
 import html2canvas from 'html2canvas'
 
-/**
- * Export Configuration Constants
- * 
- * EXPORT_SCALE: Multiplier for export resolution (2x = retina quality)
- * EXPORT_MIME_TYPE: Output image format
- * EXPORT_TIMEOUT_MS: Maximum time allowed for export operation
- *                   Prevents indefinite hangs on complex/large cards
- */
+/** Export: 2x scale (retina), timeouts to avoid hangs. */
 const EXPORT_SCALE = 2
 const EXPORT_MIME_TYPE = 'image/png' as const
 const EXPORT_TIMEOUT_MS = 15000
+const IMAGE_LOAD_TIMEOUT_MS = 10000
 
-/**
- * Wraps a promise with a timeout mechanism.
- * 
- * Prevents indefinite hangs by rejecting if the operation doesn't complete
- * within the specified duration. Useful for async operations that may stall.
- * 
- * @param promise - The promise to wrap with timeout protection
- * @param ms - Timeout duration in milliseconds
- * @param message - Error message to throw on timeout
- * @returns Promise that resolves/rejects based on wrapped promise or timeout
- */
+/** Styles we re-apply on the clone so html2canvas output matches the live card. */
+interface CapturedStyles {
+  borderRadius: string
+  boxShadow: string
+  backgroundColor: string
+  borderWidth: string
+  borderStyle: string
+  borderColor: string
+}
+
+function captureComputedStyles(element: HTMLElement): CapturedStyles {
+  const computed = window.getComputedStyle(element)
+  return {
+    borderRadius: computed.borderRadius,
+    boxShadow: computed.boxShadow,
+    backgroundColor: computed.backgroundColor,
+    borderWidth: computed.borderWidth,
+    borderStyle: computed.borderStyle,
+    borderColor: computed.borderColor,
+  }
+}
+
+/** Resolves when all img elements in the subtree have loaded or errored (with timeout). */
+function waitForImages(element: HTMLElement): Promise<void> {
+  const images = Array.from(element.querySelectorAll('img'))
+  if (images.length === 0) return Promise.resolve()
+  return Promise.all(
+    images.map(
+      (img) =>
+        new Promise<void>((resolve) => {
+          if (img.complete) {
+            resolve()
+            return
+          }
+          let timeoutId: ReturnType<typeof setTimeout> | null = null
+          const onLoad = () => done()
+          const done = () => {
+            if (timeoutId != null) {
+              clearTimeout(timeoutId)
+              timeoutId = null
+            }
+            img.removeEventListener('load', onLoad)
+            img.removeEventListener('error', onLoad)
+            resolve()
+          }
+          img.addEventListener('load', onLoad)
+          img.addEventListener('error', onLoad)
+          timeoutId = setTimeout(done, IMAGE_LOAD_TIMEOUT_MS)
+        })
+    )
+  ).then(() => {})
+}
+
 function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
-  const timeout = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error(message)), ms)
-  })
-  return Promise.race([promise, timeout])
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
+  ])
 }
 
 /**
- * Exports an element to PNG with transparent background, trimmed to exact card edges.
- * Shadows are omitted from the export.
- * 
- * @param elementId - The ID of the element to export
- * @param filename - The filename for the downloaded PNG (default: 'x-post-card.png')
- * @returns Promise that resolves when export completes
- * @throws Error if element not found, export fails, or blob creation fails
+ * Prepares the clone for html2canvas: author table layout, post images as background (object-fit workaround), preserve card/inset styles.
+ */
+function prepareCloneForCapture(
+  cloned: HTMLElement,
+  cardWidthPx: number,
+  originalStyles: CapturedStyles
+): void {
+  cloned.style.overflow = 'visible'
+  cloned.style.width = `${cardWidthPx}px`
+  cloned.style.height = 'auto'
+  cloned.style.borderRadius = originalStyles.borderRadius
+  cloned.style.boxShadow = originalStyles.boxShadow
+  cloned.style.backgroundColor = originalStyles.backgroundColor
+  cloned.style.borderWidth = originalStyles.borderWidth
+  cloned.style.borderStyle = originalStyles.borderStyle
+  cloned.style.borderColor = originalStyles.borderColor
+
+  // Author: table layout so html2canvas respects vertical alignment
+  const authorSection = cloned.querySelector('[data-export="author-section"]') as HTMLElement | null
+  if (authorSection) {
+    authorSection.style.display = 'table'
+    authorSection.style.width = '100%'
+    authorSection.style.tableLayout = 'fixed'
+    const avatarDiv = authorSection.querySelector('[data-export="author-avatar"]') as HTMLElement | null
+    if (avatarDiv) {
+      avatarDiv.style.display = 'table-cell'
+      avatarDiv.style.verticalAlign = 'middle'
+      avatarDiv.style.width = '48px'
+      avatarDiv.style.height = '48px'
+    }
+    const textBlock = authorSection.querySelector('[data-export="author-text-block"]') as HTMLElement | null
+    if (textBlock) {
+      textBlock.style.display = 'table-cell'
+      textBlock.style.verticalAlign = 'middle'
+      textBlock.style.paddingLeft = '12px'
+    }
+  }
+
+  // Post images: use background-image so aspect ratio is preserved (html2canvas ignores object-fit)
+  const safeUrlScheme = (src: string) =>
+    src.startsWith('http://') || src.startsWith('https://') || src.startsWith('data:')
+  const postImageContainers = cloned.querySelectorAll('[data-export="post-image-container"]')
+  postImageContainers.forEach((container) => {
+    const c = container as HTMLElement
+    c.style.overflow = 'hidden'
+    c.style.maxHeight = 'none'
+    const img = c.querySelector('img') as HTMLImageElement | null
+    if (img?.src && safeUrlScheme(img.src)) {
+      c.style.backgroundImage = `url(${img.src})`
+      c.style.backgroundSize = 'cover'
+      c.style.backgroundPosition = 'center'
+      img.style.display = 'none'
+    }
+  })
+}
+
+/**
+ * Exports the card element to PNG. Waits for fonts/images, captures styles, clones off-screen, runs html2canvas, restores scroll, downloads.
  */
 export async function exportElementToPNG(
   elementId: string,
   filename: string = 'x-post-card.png'
 ): Promise<void> {
   const element = document.getElementById(elementId)
-
   if (!element) {
     throw new Error(`Element with id "${elementId}" not found`)
   }
 
-  // Get actual rendered dimensions (respects user's custom width)
   const rect = element.getBoundingClientRect()
-  
-  // Create a wrapper container positioned off-screen but visible
+  const originalScrollX = window.scrollX
+  const originalScrollY = window.scrollY
+
+  const originalStyles = captureComputedStyles(element)
+  await document.fonts.ready
+  await waitForImages(element as HTMLElement)
+  window.scrollTo(0, 0)
+  await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+
+  // Clone off-screen so we can modify without affecting the visible page
   const wrapper = document.createElement('div')
-  wrapper.style.position = 'fixed'
-  wrapper.style.left = `${window.innerWidth + 2000}px`
-  wrapper.style.top = '100px'
-  wrapper.style.padding = '0'
-  wrapper.style.margin = '0'
-  wrapper.style.overflow = 'visible'
-  wrapper.style.backgroundColor = 'transparent'
-  wrapper.style.zIndex = '999999'
-  wrapper.style.width = 'auto'
-  wrapper.style.height = 'auto'
-  wrapper.style.visibility = 'visible'
-  wrapper.style.opacity = '1'
-  wrapper.style.display = 'block'
-  
-  // Clone the element deeply to preserve all content, structure, and classes
-  // Keep it simple - let html2canvas render naturally with the existing classes
-  const clonedElement = element.cloneNode(true) as HTMLElement
-  clonedElement.id = `${element.id}-export-clone`
-  
-  // Preserve the exact width from the original (respects user's custom width)
-  clonedElement.style.width = `${rect.width}px`
-  clonedElement.style.height = 'auto' // Allow natural height to prevent clipping
-  clonedElement.style.margin = '0'
-  clonedElement.style.position = 'relative'
-  clonedElement.style.overflow = 'visible'
-  clonedElement.style.maxHeight = 'none' // Remove any maxHeight constraints
-  
-  // Remove box-shadow from the clone (omit shadows from export)
-  clonedElement.style.boxShadow = 'none'
-  
-  // Remove truncate classes that might clip text in export
-  const textElements = clonedElement.querySelectorAll('.truncate')
-  textElements.forEach((el) => {
+  Object.assign(wrapper.style, {
+    position: 'fixed',
+    left: `${window.innerWidth + 2000}px`,
+    top: '100px',
+    padding: '0',
+    margin: '0',
+    overflow: 'visible',
+    backgroundColor: 'transparent',
+    zIndex: '999999',
+    visibility: 'visible',
+    opacity: '1',
+  })
+
+  const clone = element.cloneNode(true) as HTMLElement
+  clone.id = `${element.id}-export-clone`
+  Object.assign(clone.style, {
+    width: `${rect.width}px`,
+    height: 'auto',
+    margin: '0',
+    position: 'relative',
+    overflow: 'visible',
+    maxHeight: 'none',
+  })
+
+  clone.querySelectorAll('.truncate').forEach((el) => {
     el.classList.remove('truncate')
     el.classList.add('whitespace-normal', 'break-words')
   })
-  
-  // Handle overflow-hidden: preserve for rounded corners, remove for others
-  const overflowElements = clonedElement.querySelectorAll('.overflow-hidden')
-  overflowElements.forEach((el) => {
-    const elHtml = el as HTMLElement
-    // Check if element has rounded corners - these need overflow-hidden to work
-    const computedRadius = elHtml.style?.borderRadius || window.getComputedStyle(elHtml).borderRadius
-    const hasRoundedCorners = elHtml.classList.contains('rounded-full') || 
-                             elHtml.classList.contains('rounded-2xl') ||
-                             elHtml.classList.contains('rounded-card-0') ||
-                             elHtml.classList.contains('rounded-card-8') ||
-                             elHtml.classList.contains('rounded-card-16') ||
-                             elHtml.classList.contains('rounded-card-20') ||
-                             elHtml.classList.contains('rounded-card-24') ||
-                             (computedRadius && computedRadius !== '0px')
-    
-    // Only remove overflow-hidden if element doesn't have rounded corners
-    if (!hasRoundedCorners) {
-      elHtml.classList.remove('overflow-hidden')
-      elHtml.style.overflow = 'visible'
-    }
-    // If it has rounded corners, ensure overflow-hidden is preserved
-    else {
-      elHtml.style.overflow = 'hidden'
-    }
-  })
-  
-  // Append clone to wrapper and wrapper to body
-  wrapper.appendChild(clonedElement)
+
+  wrapper.appendChild(clone)
   document.body.appendChild(wrapper)
-  
-  // Force a layout recalculation
-  void wrapper.offsetHeight
-  
-  // Wait for layout to settle
-  await new Promise(resolve => {
-    requestAnimationFrame(() => {
-      requestAnimationFrame(resolve)
-    })
-  })
+
+  await waitForImages(clone)
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
 
   try {
-    // Generate canvas from cloned element - trimmed to exact card edges
-    // No padding, no shadows - just the card itself
-    // Wrapped with timeout to prevent indefinite hangs
     const canvas = await withTimeout(
-      html2canvas(clonedElement, {
-      backgroundColor: null, // Transparent background
-      scale: EXPORT_SCALE, // 2x resolution
-      logging: false,
-      useCORS: true,
-      allowTaint: false,
-      foreignObjectRendering: false,
-      removeContainer: true,
-      imageTimeout: 15000,
-      onclone: (_clonedDoc, clonedEl) => {
-        // Minimal modifications - only what's absolutely necessary
-        const cloned = clonedEl as HTMLElement
-        if (cloned) {
-          cloned.style.boxShadow = 'none'
-          cloned.style.overflow = 'visible'
-          cloned.style.width = `${rect.width}px`
-          cloned.style.height = 'auto'
-          
-          // Process all descendants - minimal changes only
-          const allDescendants = cloned.querySelectorAll('*')
-          allDescendants.forEach((desc) => {
-            const descEl = desc as HTMLElement
-            if (descEl.style) {
-              // Remove shadows only
-              descEl.style.boxShadow = 'none'
-              
-              // Check if element has rounded corners (avatar or image container)
-              const descRadius = descEl.style?.borderRadius || window.getComputedStyle(descEl).borderRadius
-              const hasRoundedCorners = descEl.classList.contains('rounded-full') || 
-                                       descEl.classList.contains('rounded-2xl') ||
-                                       descEl.classList.contains('rounded-card-0') ||
-                                       descEl.classList.contains('rounded-card-8') ||
-                                       descEl.classList.contains('rounded-card-16') ||
-                                       descEl.classList.contains('rounded-card-20') ||
-                                       descEl.classList.contains('rounded-card-24') ||
-                                       (descRadius && descRadius !== '0px')
-              
-              // Only modify overflow if element doesn't have rounded corners
-              // Rounded corners need overflow-hidden to clip content properly
-              // Don't touch flex containers - let them render naturally
-              const isFlexContainer = descEl.classList.contains('flex') || 
-                                     window.getComputedStyle(descEl).display === 'flex'
-              
-              if (!hasRoundedCorners && !isFlexContainer) {
-                if (descEl.classList.contains('overflow-hidden')) {
-                  descEl.classList.remove('overflow-hidden')
-                }
-                descEl.style.overflow = 'visible'
-              }
-              // If element has rounded corners, ensure overflow-hidden is preserved
-              else if (hasRoundedCorners) {
-                descEl.style.overflow = 'hidden'
-              }
-              // For flex containers, don't modify anything - preserve natural rendering
-              
-              // Remove maxHeight constraints that might clip content (but preserve for images)
-              const isImageContainer = descEl.classList.contains('rounded-2xl') || 
-                                      (descRadius && descRadius !== '0px' && descEl.querySelector('img') !== null) ||
-                                      descEl.querySelector('img') !== null
-              if (!isImageContainer) {
-                const computedMaxHeight = window.getComputedStyle(descEl).maxHeight
-                if (computedMaxHeight && computedMaxHeight !== 'none' && computedMaxHeight !== '100%') {
-                  descEl.style.maxHeight = 'none'
-                }
-              }
-              
-              // Remove height constraints if they're causing clipping
-              const computedHeight = window.getComputedStyle(descEl).height
-              if (computedHeight === '0px') {
-                descEl.style.height = 'auto'
-              }
-            }
-          })
-        }
-      },
-    }),
+      html2canvas(clone, {
+        backgroundColor: null,
+        scale: EXPORT_SCALE,
+        logging: false,
+        useCORS: true,
+        allowTaint: false,
+        foreignObjectRendering: false,
+        removeContainer: true,
+        imageTimeout: IMAGE_LOAD_TIMEOUT_MS,
+        scrollX: 0,
+        scrollY: 0,
+        onclone: (_doc, clonedEl) => {
+          prepareCloneForCapture(clonedEl as HTMLElement, rect.width, originalStyles)
+        },
+      }),
       EXPORT_TIMEOUT_MS,
       'Export timed out. The image may be too complex or large.'
     )
 
-    // Convert to blob with proper error handling
     return new Promise<void>((resolve, reject) => {
       canvas.toBlob(
         (blob) => {
@@ -225,29 +211,23 @@ export async function exportElementToPNG(
               reject(new Error('Failed to generate image blob'))
               return
             }
-
             const url = URL.createObjectURL(blob)
             const link = document.createElement('a')
             link.download = filename
             link.href = url
             link.click()
-
-            // Cleanup
             URL.revokeObjectURL(url)
             resolve()
-          } catch (error) {
-            reject(error instanceof Error ? error : new Error('Failed to download image'))
+          } catch (e) {
+            reject(e instanceof Error ? e : new Error('Failed to download image'))
           }
         },
-        EXPORT_MIME_TYPE
+        EXPORT_MIME_TYPE,
+        1.0
       )
     })
-  } catch (error) {
-    throw error instanceof Error 
-      ? error 
-      : new Error('Failed to export element to PNG')
   } finally {
-    // Always clean up the hidden wrapper, even if export fails
+    window.scrollTo(originalScrollX, originalScrollY)
     if (wrapper.parentNode) {
       document.body.removeChild(wrapper)
     }

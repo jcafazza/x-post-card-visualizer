@@ -4,7 +4,7 @@ This file provides context and guidelines for Claude Code when working on this p
 
 ## Project Overview
 
-**Project Name:** X Post Card Builder
+**Project Name:** X Post Card Visualizer
 **Type:** Next.js web application (UI + API routes)
 **Purpose:** Transform X (Twitter) posts into beautiful, customizable visual cards for export and embedding
 
@@ -37,7 +37,7 @@ Designers, content creators, and personal brand builders who want beautiful X po
 ## Project Structure
 
 ```
-x-post-visualizer/
+x-post-card-visualizer/
 ├── web/
 │   ├── app/
 │   │   ├── api/
@@ -48,7 +48,6 @@ x-post-visualizer/
 │   │   └── page.tsx
 │   ├── components/                # React components
 │   ├── lib/                       # Utilities, themes, API client
-│   │   └── archive/               # Archived code (Phase 2 features)
 │   ├── types/                     # TypeScript type definitions
 │   ├── constants/                 # UI constants (animations, card settings)
 │   └── package.json               # All dependencies (single source of truth)

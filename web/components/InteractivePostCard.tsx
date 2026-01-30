@@ -5,7 +5,7 @@ import { useReducedMotion } from '@/hooks/useReducedMotion'
 import PostCard from './PostCard'
 import { PostData, CardSettings, ShadowIntensity } from '@/types/post'
 import { getThemeStyles } from '@/lib/themes'
-import { ANIMATION_MICRO, ANIMATION_STANDARD, ANIMATION_DELIBERATE, EASING_ELEGANT, EASING_STANDARD, EASING_BOUNCE, SHARE_PHASE2_DURATION_MS } from '@/constants/ui'
+import { ANIMATION_MICRO, ANIMATION_STANDARD, ANIMATION_DELIBERATE, EASING_ELEGANT, EASING_STANDARD, EASING_BOUNCE, THEME_TRANSITION } from '@/constants/ui'
 import {
   CARD_MIN_WIDTH,
   CARD_MAX_WIDTH,
@@ -26,11 +26,20 @@ interface InteractivePostCardProps {
   lockLayout?: boolean
   /** Share page phase 2: when defined, shadow and "View original post" animate in after card lands. */
   sharePhase2Revealed?: boolean
-  /** Duration (ms) for phase 2 shadow + button animation. Used only when sharePhase2Revealed is defined. */
-  sharePhase2DurationMs?: number
 }
 
 const VIEW_ORIGINAL_LABEL = 'View original post'
+
+type CornerKey = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'
+
+const RESIZE_CURSORS: Record<CornerKey, string> = {
+  'top-left': 'nwse-resize',
+  'top-right': 'nesw-resize',
+  'bottom-left': 'nesw-resize',
+  'bottom-right': 'nwse-resize',
+}
+
+const CORNERS: CornerKey[] = ['top-left', 'top-right', 'bottom-left', 'bottom-right']
 
 function getShadowForIntensity(
   theme: { shadowShallow: string; shadowMedium: string; shadowDeep: string },
@@ -89,7 +98,7 @@ function useCrossfadeText(targetText: string) {
   return { fromText, toText, showTo }
 }
 
-export default function InteractivePostCard({ post, settings, onSettingsChange, sourceUrl, lockLayout = false, sharePhase2Revealed, sharePhase2DurationMs = SHARE_PHASE2_DURATION_MS }: InteractivePostCardProps) {
+export default function InteractivePostCard({ post, settings, onSettingsChange, sourceUrl, lockLayout = false, sharePhase2Revealed }: InteractivePostCardProps) {
   const [isResizingWidth, setIsResizingWidth] = useState(false)
   const [isResizingRadius, setIsResizingRadius] = useState(false)
   const [hoveredCorner, setHoveredCorner] = useState<string | null>(null)
@@ -106,7 +115,9 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
   const widthRafRef = useRef<number | null>(null)
   const latestMouseXRef = useRef<number>(0)
   const settingsRef = useRef(settings)
+  const onSettingsChangeRef = useRef(onSettingsChange)
   settingsRef.current = settings
+  onSettingsChangeRef.current = onSettingsChange
 
   const theme = getThemeStyles(settings.theme)
 
@@ -124,14 +135,19 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
   const valueButtonHideTimerRef = useRef<NodeJS.Timeout | null>(null)
   const valueButtonShowRafRef = useRef<number | null>(null)
 
-  const setGlobalCursor = (cursor: string) => {
-    // Safari can ignore body cursor changes during active drags; setting on <html>
-    // tends to be more reliable across browsers.
-    document.documentElement.style.cursor = cursor
-    document.body.style.cursor = cursor
+  const setResizeCursor = (cursor: string) => {
+    if (typeof document === 'undefined') return
+    if (document.documentElement) document.documentElement.style.cursor = cursor
+    if (document.body) document.body.style.cursor = cursor
   }
 
-  // Global mouse move/up handling during active drags.
+  const clearResizeCursor = () => {
+    if (typeof document === 'undefined') return
+    if (document.documentElement) document.documentElement.style.cursor = ''
+    if (document.body) document.body.style.cursor = ''
+  }
+
+  // Document-level move/up during resize so cursor and position work anywhere.
   useEffect(() => {
     const applyWidthFromMouse = () => {
       widthRafRef.current = null
@@ -168,101 +184,109 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
       }
 
       setVisualWidth(visualWidthValue)
-      onSettingsChange({ ...settingsRef.current, cardWidth: clampedWidth })
+      const cb = onSettingsChangeRef.current
+      if (typeof cb === 'function') cb({ ...settingsRef.current, cardWidth: clampedWidth })
       setValueLabel(`${Math.round(visualWidthValue)}px`)
     }
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (isResizingWidth) {
-        setGlobalCursor('ew-resize')
-        latestMouseXRef.current = e.clientX
-        // Throttle to one update per frame for smooth 60fps without overwhelming React
-        if (widthRafRef.current == null) {
-          widthRafRef.current = requestAnimationFrame(applyWidthFromMouse)
+      try {
+        if (isResizingWidth) {
+          setResizeCursor('ew-resize')
+          latestMouseXRef.current = e.clientX
+          if (widthRafRef.current == null) {
+            widthRafRef.current = requestAnimationFrame(applyWidthFromMouse)
+          }
+        } else if (isResizingRadius) {
+          const cardRect = cardRef.current?.getBoundingClientRect()
+          if (!cardRect) return
+
+          if (hoveredCorner) setResizeCursor(RESIZE_CURSORS[hoveredCorner as CornerKey] ?? 'default')
+
+          const corners = {
+            'top-left': { x: cardRect.left, y: cardRect.top },
+            'top-right': { x: cardRect.right, y: cardRect.top },
+            'bottom-left': { x: cardRect.left, y: cardRect.bottom },
+            'bottom-right': { x: cardRect.right, y: cardRect.bottom },
+          }
+
+          const corner = corners[hoveredCorner as keyof typeof corners]
+          if (!corner) return
+
+          const distance = Math.sqrt(Math.pow(e.clientX - corner.x, 2) + Math.pow(e.clientY - corner.y, 2))
+          const rawRadius = Math.max(0, Math.min(CARD_MAX_RADIUS, Math.max(0, distance - CARD_CORNER_ZONE)))
+          const snappedRadius = Math.round(rawRadius / 4) * 4
+
+          const cb = onSettingsChangeRef.current
+          if (typeof cb === 'function') cb({ ...settingsRef.current, customBorderRadius: snappedRadius })
+          setValueLabel(`${snappedRadius}px`)
         }
-      } else if (isResizingRadius) {
-        const cardRect = cardRef.current?.getBoundingClientRect()
-        if (!cardRect) return
-
-        const cursorMap: Record<string, string> = {
-          'top-left': 'nwse-resize',
-          'top-right': 'nesw-resize',
-          'bottom-left': 'nesw-resize',
-          'bottom-right': 'nwse-resize',
-        }
-        if (hoveredCorner) setGlobalCursor(cursorMap[hoveredCorner] || 'default')
-
-        const corners = {
-          'top-left': { x: cardRect.left, y: cardRect.top },
-          'top-right': { x: cardRect.right, y: cardRect.top },
-          'bottom-left': { x: cardRect.left, y: cardRect.bottom },
-          'bottom-right': { x: cardRect.right, y: cardRect.bottom },
-        }
-
-        const corner = corners[hoveredCorner as keyof typeof corners]
-        if (!corner) return
-
-        const distance = Math.sqrt(Math.pow(e.clientX - corner.x, 2) + Math.pow(e.clientY - corner.y, 2))
-        const rawRadius = Math.max(0, Math.min(CARD_MAX_RADIUS, Math.max(0, distance - CARD_CORNER_ZONE)))
-        const snappedRadius = Math.round(rawRadius / 4) * 4
-
-        onSettingsChange({ ...settings, customBorderRadius: snappedRadius })
-        setValueLabel(`${snappedRadius}px`)
+      } catch (_) {
+        // Safari/WebKit can throw on event dispatch; avoid breaking the app
       }
     }
 
     const handleMouseUp = () => {
-      // Cancel any pending width rAF so it cannot overwrite snap-back after release
-      if (widthRafRef.current != null) {
-        cancelAnimationFrame(widthRafRef.current)
-        widthRafRef.current = null
-      }
+      try {
+        if (widthRafRef.current != null) {
+          cancelAnimationFrame(widthRafRef.current)
+          widthRafRef.current = null
+        }
 
-      // Rubberband snap-back: if visual width exceeds max or is below min, animate back to bound
-      if (isResizingWidth && visualWidth !== null) {
-        if (visualWidth > CARD_MAX_WIDTH) {
-          setVisualWidth(CARD_MAX_WIDTH)
-          onSettingsChange({ ...settingsRef.current, cardWidth: CARD_MAX_WIDTH })
-          setTimeout(() => setVisualWidth(null), ANIMATION_STANDARD)
-        } else if (visualWidth < CARD_MIN_WIDTH) {
-          setVisualWidth(CARD_MIN_WIDTH)
-          onSettingsChange({ ...settingsRef.current, cardWidth: CARD_MIN_WIDTH })
-          setTimeout(() => setVisualWidth(null), ANIMATION_STANDARD)
+        if (isResizingWidth && visualWidth !== null) {
+          const cb = onSettingsChangeRef.current
+          if (visualWidth > CARD_MAX_WIDTH) {
+            setVisualWidth(CARD_MAX_WIDTH)
+            if (typeof cb === 'function') cb({ ...settingsRef.current, cardWidth: CARD_MAX_WIDTH })
+            setTimeout(() => setVisualWidth(null), ANIMATION_STANDARD)
+          } else if (visualWidth < CARD_MIN_WIDTH) {
+            setVisualWidth(CARD_MIN_WIDTH)
+            if (typeof cb === 'function') cb({ ...settingsRef.current, cardWidth: CARD_MIN_WIDTH })
+            setTimeout(() => setVisualWidth(null), ANIMATION_STANDARD)
+          } else {
+            setVisualWidth(null)
+          }
         } else {
           setVisualWidth(null)
         }
-      } else {
-        setVisualWidth(null)
+
+        setIsResizingWidth(false)
+        setIsResizingRadius(false)
+        resizeTypeRef.current = null
+        setHoveredCorner(null)
+        clearResizeCursor()
+
+        if (labelResetTimerRef.current) clearTimeout(labelResetTimerRef.current)
+        labelResetTimerRef.current = setTimeout(() => {
+          setValueLabel(null)
+          labelResetTimerRef.current = null
+        }, ANIMATION_MICRO)
+      } catch (_) {
+        clearResizeCursor()
+        setIsResizingWidth(false)
+        setIsResizingRadius(false)
+        resizeTypeRef.current = null
+        setHoveredCorner(null)
       }
-
-      setIsResizingWidth(false)
-      setIsResizingRadius(false)
-      resizeTypeRef.current = null
-      setHoveredCorner(null)
-      setGlobalCursor('default')
-
-      if (labelResetTimerRef.current) clearTimeout(labelResetTimerRef.current)
-      // Short, elegant hold before reverting the label.
-      labelResetTimerRef.current = setTimeout(() => {
-        setValueLabel(null)
-        labelResetTimerRef.current = null
-      }, ANIMATION_MICRO)
     }
 
-    if (isResizingWidth || isResizingRadius) {
+    const isActive = isResizingWidth || isResizingRadius
+    if (isActive) {
       document.addEventListener('mousemove', handleMouseMove)
       document.addEventListener('mouseup', handleMouseUp)
     }
 
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
+      if (isActive) {
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+      }
       if (widthRafRef.current != null) {
         cancelAnimationFrame(widthRafRef.current)
         widthRafRef.current = null
       }
     }
-  }, [isResizingWidth, isResizingRadius, hoveredCorner, settings, onSettingsChange, visualWidth])
+  }, [isResizingWidth, isResizingRadius, hoveredCorner, settings, visualWidth])
 
   useEffect(() => {
     return () => {
@@ -275,86 +299,87 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
     type: 'width-left' | 'width-right' | 'corner',
     corner?: string
   ) => {
-    e.preventDefault()
-    e.stopPropagation()
-    if (lockLayout) return
+    try {
+      if (!e) return
+      e.preventDefault()
+      e.stopPropagation()
+      if (lockLayout) return
 
-    if (labelResetTimerRef.current) {
-      clearTimeout(labelResetTimerRef.current)
-      labelResetTimerRef.current = null
-    }
-
-    if (type === 'width-left' || type === 'width-right') {
-      setGlobalCursor('ew-resize')
-      setIsResizingWidth(true)
-      resizeTypeRef.current = type
-      startXRef.current = e.clientX
-      const snappedStartWidth = Math.round(settings.cardWidth / 2) * 2
-      startWidthRef.current = snappedStartWidth
-      setVisualWidth(null) // Reset visual width at start of drag
-      setValueLabel(`${snappedStartWidth}px`)
-    } else if (type === 'corner' && corner) {
-      const cursorMap: Record<string, string> = {
-        'top-left': 'nwse-resize',
-        'top-right': 'nesw-resize',
-        'bottom-left': 'nesw-resize',
-        'bottom-right': 'nwse-resize',
+      if (labelResetTimerRef.current) {
+        clearTimeout(labelResetTimerRef.current)
+        labelResetTimerRef.current = null
       }
-      setGlobalCursor(cursorMap[corner] || 'default')
-      setIsResizingRadius(true)
-      setHoveredCorner(corner)
-      startRadiusRef.current = settings.customBorderRadius
-      setValueLabel(`${settings.customBorderRadius}px`)
+
+      if (type === 'width-left' || type === 'width-right') {
+        setResizeCursor('ew-resize')
+        setIsResizingWidth(true)
+        resizeTypeRef.current = type
+        startXRef.current = e.clientX
+        const snappedStartWidth = Math.round(settings.cardWidth / 2) * 2
+        startWidthRef.current = snappedStartWidth
+        setVisualWidth(null)
+        setValueLabel(`${snappedStartWidth}px`)
+      } else if (type === 'corner' && corner) {
+        setResizeCursor(RESIZE_CURSORS[corner as CornerKey] ?? 'default')
+        setIsResizingRadius(true)
+        setHoveredCorner(corner)
+        startRadiusRef.current = settings.customBorderRadius
+        setValueLabel(`${settings.customBorderRadius}px`)
+      }
+    } catch (_) {
+      // Safari/WebKit can throw on event dispatch; avoid breaking the app
     }
   }
 
   const handleHoverMove = (e: React.MouseEvent) => {
-    if (lockLayout || isResizingWidth || isResizingRadius) return
+    try {
+      if (!e || lockLayout || isResizingWidth || isResizingRadius) return
 
-    const cardRect = cardRef.current?.getBoundingClientRect()
-    if (!cardRect) return
+      const cardRect = cardRef.current?.getBoundingClientRect()
+      if (!cardRect) return
 
-    const { clientX, clientY } = e
-    const { left, right, top, bottom } = cardRect
+      const { clientX, clientY } = e
+      const { left, right, top, bottom } = cardRect
 
-    const cornerZones = {
-      'top-left': { x: left, y: top, zone: CARD_CORNER_ZONE },
-      'top-right': { x: right, y: top, zone: CARD_CORNER_ZONE },
-      'bottom-left': { x: left, y: bottom, zone: CARD_CORNER_ZONE },
-      'bottom-right': { x: right, y: bottom, zone: CARD_CORNER_ZONE },
-    }
-
-    let nearCorner: string | null = null
-    for (const [corner, pos] of Object.entries(cornerZones)) {
-      const distance = Math.sqrt(Math.pow(clientX - pos.x, 2) + Math.pow(clientY - pos.y, 2))
-      if (distance <= pos.zone) {
-        nearCorner = corner
-        break
+      const cornerZones = {
+        'top-left': { x: left, y: top, zone: CARD_CORNER_ZONE },
+        'top-right': { x: right, y: top, zone: CARD_CORNER_ZONE },
+        'bottom-left': { x: left, y: bottom, zone: CARD_CORNER_ZONE },
+        'bottom-right': { x: right, y: bottom, zone: CARD_CORNER_ZONE },
       }
-    }
 
-    if (nearCorner) {
-      setHoveredCorner(nearCorner)
-      const cursorMap: Record<string, string> = {
-        'top-left': 'nwse-resize',
-        'top-right': 'nesw-resize',
-        'bottom-left': 'nesw-resize',
-        'bottom-right': 'nwse-resize',
+      let nearCorner: string | null = null
+      for (const [corner, pos] of Object.entries(cornerZones)) {
+        const distance = Math.sqrt(Math.pow(clientX - pos.x, 2) + Math.pow(clientY - pos.y, 2))
+        if (distance <= pos.zone) {
+          nearCorner = corner
+          break
+        }
       }
-      setGlobalCursor(cursorMap[nearCorner] || 'default')
-    } else if (Math.abs(clientX - left) < 8 || Math.abs(clientX - right) < 8) {
-      setGlobalCursor('ew-resize')
-      setHoveredCorner(null)
-    } else {
-      setGlobalCursor('default')
-      setHoveredCorner(null)
+
+      if (nearCorner) {
+        setHoveredCorner(nearCorner)
+        setResizeCursor(RESIZE_CURSORS[nearCorner as CornerKey] ?? 'default')
+      } else if (Math.abs(clientX - left) < 8 || Math.abs(clientX - right) < 8) {
+        setResizeCursor('ew-resize')
+        setHoveredCorner(null)
+      } else {
+        clearResizeCursor()
+        setHoveredCorner(null)
+      }
+    } catch (_) {
+      // Safari/WebKit can throw on event dispatch; avoid breaking the app
     }
   }
 
   const handleHoverLeave = () => {
-    if (!isResizingWidth && !isResizingRadius) {
-      setGlobalCursor('default')
-      setHoveredCorner(null)
+    try {
+      if (!isResizingWidth && !isResizingRadius) {
+        clearResizeCursor()
+        setHoveredCorner(null)
+      }
+    } catch (_) {
+      // Safari/WebKit can throw on event dispatch; avoid breaking the app
     }
   }
 
@@ -459,15 +484,15 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
       >
         {!lockLayout && (
           <>
-            {/* Left Handle - visual only; Safari ignores cursor on transformed elements, so hit target is the button below */}
+            {/* Left handle (visual); hit target is the width button below */}
             <div
               className="absolute left-0 top-1/2 -translate-x-full -translate-y-1/2 w-2 h-12 pointer-events-none flex items-center justify-end pr-1"
               style={{ left: '-8px' }}
               aria-hidden
             >
               <div
-                className="w-0.5 h-full rounded-full transition-opacity"
-                style={{ backgroundColor: theme.textTertiary, opacity: 0.3 }}
+                className="w-0.5 h-full rounded-full"
+                style={{ backgroundColor: theme.textTertiary, opacity: 0.3, transition: THEME_TRANSITION }}
               />
             </div>
 
@@ -478,13 +503,13 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
               aria-hidden
             >
               <div
-                className="w-0.5 h-full rounded-full transition-opacity"
-                style={{ backgroundColor: theme.textTertiary, opacity: 0.3 }}
+                className="w-0.5 h-full rounded-full"
+                style={{ backgroundColor: theme.textTertiary, opacity: 0.3, transition: THEME_TRANSITION }}
               />
             </div>
 
             {/* Corner Indicators - L-shaped */}
-            {['top-left', 'top-right', 'bottom-left', 'bottom-right'].map((corner) => {
+            {CORNERS.map((corner) => {
           const isHovered = hoveredCorner === corner
           const isActive = isResizingRadius
           if (!isActive && !isHovered) return null
@@ -523,7 +548,7 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
           )
         })}
 
-            {/* Interactive Zones - Large touch targets (44px minimum); cursor via inline style for Safari */}
+            {/* Resize handles: large touch targets, cursor on handle */}
             <button
               type="button"
               className="absolute left-0 top-0 bottom-0 w-11 z-10 bg-transparent border-0 p-0"
@@ -538,14 +563,7 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
               onMouseDown={(e) => handleMouseDown(e, 'width-right')}
               aria-label="Resize width right"
             />
-            {['top-left', 'top-right', 'bottom-left', 'bottom-right'].map((corner) => {
-              const cursorMap: Record<string, string> = {
-                'top-left': 'nwse-resize',
-                'top-right': 'nesw-resize',
-                'bottom-left': 'nesw-resize',
-                'bottom-right': 'nwse-resize',
-              }
-              return (
+            {CORNERS.map((corner) => (
                 <button
                   key={corner}
                   type="button"
@@ -555,13 +573,12 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
                     [corner.includes('top') ? 'top' : 'bottom']: `-${CARD_CORNER_ZONE}px`,
                     width: `${CARD_CORNER_ZONE * 2}px`,
                     height: `${CARD_CORNER_ZONE * 2}px`,
-                    cursor: cursorMap[corner],
+                    cursor: RESIZE_CURSORS[corner],
                   }}
                   onMouseDown={(e) => handleMouseDown(e, 'corner', corner)}
                   aria-label={`Resize corner ${corner}`}
                 />
-              )
-            })}
+            ))}
           </>
         )}
 
@@ -591,7 +608,7 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
             ...(lockLayout && sharePhase2Revealed !== undefined
               ? {
                   opacity: sharePhase2Revealed ? 1 : 0,
-                  transition: `opacity ${Number(sharePhase2DurationMs) || SHARE_PHASE2_DURATION_MS}ms ${EASING_ELEGANT}`,
+                  transition: THEME_TRANSITION,
                 }
               : {}),
           }}
@@ -615,13 +632,7 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
                   ? `${buttonMinWidth}px`
                   : undefined,
               // Intentionally avoid animating layout-affecting properties (like min-width).
-              transition: [
-                `background-color ${ANIMATION_MICRO}ms ${EASING_ELEGANT}`,
-                `border-color ${ANIMATION_MICRO}ms ${EASING_ELEGANT}`,
-                `color ${ANIMATION_MICRO}ms ${EASING_ELEGANT}`,
-                `box-shadow ${ANIMATION_MICRO}ms ${EASING_ELEGANT}`,
-                `filter ${ANIMATION_MICRO}ms ${EASING_ELEGANT}`,
-              ].join(', '),
+              transition: `${THEME_TRANSITION}, filter ${ANIMATION_MICRO}ms ${EASING_ELEGANT}`,
             }}
           >
             <span className="relative inline-flex">

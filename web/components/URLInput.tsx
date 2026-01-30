@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { PostData, ThemeStyles } from '@/types/post'
 import { fetchPostData } from '@/lib/api'
-import { ANIMATION_STANDARD, EASING_STANDARD, INPUT_BUTTON_PADDING_RIGHT } from '@/constants/ui'
+import { ANIMATION_STANDARD, EASING_STANDARD, INPUT_BUTTON_PADDING_RIGHT, THEME_TRANSITION } from '@/constants/ui'
 import { Check, Loader2, AlertCircle } from 'lucide-react'
 
 interface URLInputProps {
@@ -197,7 +197,7 @@ export default function URLInput({ onPostLoad, onSourceUrlChange, onClear, theme
       onSubmit={handleSubmit}
       className="relative flex items-center w-full border rounded-full p-1"
       style={{
-        transition: `border-color ${ANIMATION_STANDARD}ms ${EASING_STANDARD}, box-shadow ${ANIMATION_STANDARD}ms ${EASING_STANDARD}`,
+        transition: `${THEME_TRANSITION}, box-shadow ${ANIMATION_STANDARD}ms ${EASING_STANDARD}`,
         backgroundColor: 'rgba(0,0,0,0.02)',
         borderColor: theme.headerOuterStroke,
         borderWidth: '1px',
@@ -232,7 +232,7 @@ export default function URLInput({ onPostLoad, onSourceUrlChange, onClear, theme
           autoComplete="url"
           className="w-full bg-transparent border-none py-1.5 pl-2 text-base outline-none focus-visible:ring-2 focus-visible:ring-offset-2 placeholder:opacity-40 font-normal"
           style={{ 
-            transition: `color ${ANIMATION_STANDARD}ms ${EASING_STANDARD}, background-color ${ANIMATION_STANDARD}ms ${EASING_STANDARD}, border-color ${ANIMATION_STANDARD}ms ${EASING_STANDARD}`,
+            transition: THEME_TRANSITION,
             color: theme.appText,
             paddingRight: `${INPUT_BUTTON_PADDING_RIGHT}px`,
             WebkitMaskImage: url.trim().length > 0
@@ -258,19 +258,23 @@ export default function URLInput({ onPostLoad, onSourceUrlChange, onClear, theme
             className="px-3 py-1.5 rounded-full text-xs font-medium cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed hover:brightness-105 active:scale-95 focus-visible:ring-2 focus-visible:ring-offset-2 flex items-center gap-1.5"
             style={{
               minHeight: '32px', // Ensure minimum touch target (form container is 44px, button needs adequate size)
-              transition: `background-color ${ANIMATION_STANDARD}ms ${EASING_STANDARD}, color ${ANIMATION_STANDARD}ms ${EASING_STANDARD}, border-color ${ANIMATION_STANDARD}ms ${EASING_STANDARD}, transform ${ANIMATION_STANDARD}ms ${EASING_STANDARD}`,
+              transition: `${THEME_TRANSITION}, transform ${ANIMATION_STANDARD}ms ${EASING_STANDARD}`,
               backgroundColor: theme.headerBg,
               color: error ? theme.error : theme.appText,
               border: `1px solid ${theme.buttonBorderDefault}`,
               boxShadow: (!url.trim() && !hasImported && !error) ? 'none' : theme.shadowShallow,
             }}
             onMouseEnter={(e) => {
-              if (isButtonClickable() && !error) {
-                e.currentTarget.style.borderColor = theme.buttonBorderHover
-              }
+              try {
+                const el = e?.currentTarget
+                if (el && isButtonClickable() && !error) el.style.borderColor = theme.buttonBorderHover
+              } catch (_) {}
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = theme.buttonBorderDefault
+              try {
+                const el = e?.currentTarget
+                if (el) el.style.borderColor = theme.buttonBorderDefault
+              } catch (_) {}
             }}
           >
             {getButtonContent()}

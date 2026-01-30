@@ -1,4 +1,4 @@
-# X Post Visualizer - Comprehensive Project Review
+# X Post Card Visualizer — Comprehensive Project Review
 
 **Review Date:** January 23, 2026  
 **Reviewer Perspective:** Principal Engineer + UI/UX Designer + Product Designer  
@@ -578,7 +578,7 @@ export const ANIMATION_MICRO = 300
 ### Proposed File Structure
 
 ```
-x-post-visualizer/
+x-post-card-visualizer/
 ├── .github/
 │   ├── ISSUE_TEMPLATE.md
 │   ├── PULL_REQUEST_TEMPLATE.md

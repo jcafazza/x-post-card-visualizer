@@ -62,13 +62,6 @@ This document explains why each dependency is included in the project.
   - Used for: PNG export functionality
   - Why: Reliable client-side image generation from DOM
 
-### Code Highlighting (Unused - Phase 2)
-
-- **`prism-react-renderer@^2.4.1`** - Syntax highlighting
-  - Used for: (Currently unused - planned for Phase 2 "Copy snippet" feature)
-  - Why: Will be used to highlight generated code snippets
-  - Note: Can be removed if Phase 2 is not planned
-
 ### Type Definitions
 
 - **`@types/node@^22.10.5`** - TypeScript types for Node.js
@@ -125,11 +118,6 @@ These overrides are included to resolve dependency conflicts:
 
 - **`html2canvas`** (~100KB gzipped) - Required for PNG export
   - Consider: This is essential functionality, no alternative
-
-### Unused Dependencies
-
-- **`prism-react-renderer`** - Currently unused (Phase 2 feature)
-  - Action: Can be removed if Phase 2 is not planned
 
 ## Security
 

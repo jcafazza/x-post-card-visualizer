@@ -39,25 +39,20 @@ export const ANIMATION_STANDARD = 500
 /** Deliberate transitions: Layout changes, card resizing, theme shifts */
 export const ANIMATION_DELIBERATE = 600
 
+/** Theme transition: use same duration + easing everywhere so theme changes feel unified */
+export const THEME_TRANSITION_MS = ANIMATION_DELIBERATE
+
 /** Extended animations: Page entrances, value indicators */
 export const ANIMATION_EXTENDED = 1000
 
 /** Duration for successful "Imported" state feedback */
 export const SUCCESS_STATE_DURATION = 800
 
-/** Minimum time to show "Vibin' & cookin'…" loading state on share page (ms) */
+/** Minimum time to show loading state on share page (ms) */
 export const SHARE_LOADING_MIN_MS = 1500
 
-/** Share page card entrance: duration (ms) and vertical offset (px) from bottom */
-export const SHARE_CARD_ENTRANCE_MS = 1000
-export const SHARE_CARD_ENTRANCE_OFFSET_PX = 40
-
-/** Share page phase 2: delay after card lands (ms), then shadow + button animate in over SHARE_PHASE2_DURATION_MS. Must match .share-card-entrance duration in app/globals.css (2000ms). */
-export const SHARE_PHASE2_DELAY_MS = 2000
-export const SHARE_PHASE2_DURATION_MS = 600
-
-/** Landing ease: decelerate into place (share card entrance) */
-export const EASING_LANDING = 'cubic-bezier(0.16, 1, 0.3, 1)'
+/** Share page phase 2: delay after card lands (ms). Must match .share-card-entrance duration in app/globals.css. */
+export const SHARE_PHASE2_DELAY_MS = 2800
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EASING CURVES
@@ -73,6 +68,9 @@ export const EASING_STANDARD = 'ease-out'
  */
 export const EASING_ELEGANT = 'cubic-bezier(0.45, 0, 0.15, 1)'
 
+/** Single transition string for theme-driven properties; use everywhere for identical timing so theme changes feel unified. */
+export const THEME_TRANSITION = `background-color ${THEME_TRANSITION_MS}ms ${EASING_ELEGANT}, color ${THEME_TRANSITION_MS}ms ${EASING_ELEGANT}, border-color ${THEME_TRANSITION_MS}ms ${EASING_ELEGANT}, opacity ${THEME_TRANSITION_MS}ms ${EASING_ELEGANT}, filter ${THEME_TRANSITION_MS}ms ${EASING_ELEGANT}, box-shadow ${THEME_TRANSITION_MS}ms ${EASING_ELEGANT}`
+
 /**
  * Bounce easing for playful press feedback.
  * Use sparingly - only for button presses where personality is desired.
@@ -85,9 +83,6 @@ export const EASING_BOUNCE = 'cubic-bezier(0.34, 1.56, 0.64, 1)'
 
 /** Duration for error messages before auto-hiding */
 export const ERROR_MESSAGE_DISPLAY_DURATION = 5000
-
-/** Duration for tooltips before auto-hiding */
-export const TOOLTIP_DISPLAY_DURATION = 1500
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ENTRANCE ANIMATION DELAYS
@@ -102,14 +97,8 @@ export const ENTRANCE_DELAY_CARD = 400
 // SPACING CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Standard button size for touch targets (WCAG minimum: 44x44px) */
-export const BUTTON_SIZE = 44
-
 /** Padding for input button (right side) in pixels */
 export const INPUT_BUTTON_PADDING_RIGHT = 58
-
-/** Top padding for main content area below header (in pixels) */
-export const HEADER_CONTENT_PADDING_TOP = 148
 
 /** Spacing between header input and toolbar (in pixels) */
 export const CONTENT_VERTICAL_SPACING = 40
@@ -128,3 +117,6 @@ export const FOOTER_FADE_OPACITY = 0.9
 
 /** Footer fade gradient stop position (0-1, where 0.25 = 75% from top) */
 export const FOOTER_FADE_STOP = 0.25
+
+/** Extra padding below card/button so they can scroll fully behind the footer on small viewports. Used with FOOTER_FADE_HEIGHT. */
+export const FOOTER_SCROLL_CLEAR_EXTRA = 64

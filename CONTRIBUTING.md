@@ -1,6 +1,6 @@
-# Contributing to X Post Card Builder
+# Contributing to X Post Card Visualizer
 
-Thank you for your interest in contributing! This document provides guidelines and instructions for contributing to the project.
+Thank you for your interest in contributing. This document provides guidelines for contributing to X Post Card Visualizer.
 
 ## Getting Started
 
@@ -12,12 +12,12 @@ Thank you for your interest in contributing! This document provides guidelines a
 
 ### Setup
 
-1. **Fork the repository** on GitHub
+1. **Fork the repository** on GitHub.
 
 2. **Clone your fork:**
    ```bash
-   git clone https://github.com/your-username/x-post-visualizer.git
-   cd x-post-visualizer
+   git clone https://github.com/your-username/x-post-card-visualizer.git
+   cd x-post-card-visualizer
    ```
 
 3. **Install dependencies:**
@@ -189,4 +189,4 @@ If you have questions or need help:
 - Check existing issues and PRs
 - Review the documentation in `README.md` and `PRODUCT.md`
 
-Thank you for contributing! 🎉
+Thank you for contributing.
