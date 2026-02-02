@@ -39,7 +39,8 @@ function MyComponent() {
 | `theme` | `'light' \| 'dim' \| 'dark'` | `'light'` | Color theme |
 | `shadow` | `'flat' \| 'raised' \| 'floating' \| 'elevated'` | `'floating'` | Shadow intensity |
 | `width` | `number` | `450` | Card width in pixels (350-700) |
-| `radius` | `number` | `20` | Border radius in pixels (0-24) |
+| `radius` | `number` | `20` | Border radius in pixels (0-40) |
+| `showDate` | `boolean` | `true` | Show post timestamp in card footer |
 | `apiUrl` | `string` | (hosted API) | Custom API endpoint |
 | `className` | `string` | - | Custom className for wrapper |
 | `fallback` | `ReactNode` | Loading skeleton | Custom loading placeholder |
@@ -63,6 +64,10 @@ A true dark theme with deep blacks.
 - **raised**: Subtle shadow for slight elevation
 - **floating**: Medium shadow (default)
 - **elevated**: Prominent shadow for maximum depth
+
+## Timestamp
+
+Set `showDate={true}` to display the post’s creation date and time in the card footer (e.g. "Jan 22, 2026 · 11:37 PM"). The API returns an ISO timestamp; the card formats it for the user’s locale.
 
 ## Advanced Usage
 

@@ -17,7 +17,8 @@ export const themeConfig = {
     toolbarBg: 'rgba(255, 255, 255, 0.8)',
     buttonBorderDefault: 'rgba(229, 229, 229, 0.9)',
     buttonBorderHover: 'rgba(229, 229, 229, 0.8)',
-    // Semantic colors
+    // Semantic colors (viewOriginalPlate = solid at bottom of gradient behind "View original post" button)
+    viewOriginalPlateSolid: '#FFFFFF',
     error: '#DC2626',
     errorBg: 'rgba(220, 38, 38, 0.08)',
     errorShadow: '0 4px 12px rgba(220, 38, 38, 0.15)',
@@ -45,7 +46,8 @@ export const themeConfig = {
     toolbarBg: 'rgba(21, 32, 43, 0.8)',
     buttonBorderDefault: 'rgba(56, 68, 77, 0.4)',
     buttonBorderHover: 'rgba(56, 68, 77, 0.8)',
-    // Semantic colors
+    // Semantic colors (viewOriginalPlate = solid at bottom of gradient behind "View original post" button)
+    viewOriginalPlateSolid: '#15202B',
     error: '#F87171',
     errorBg: 'rgba(248, 113, 113, 0.12)',
     errorShadow: '0 4px 12px rgba(248, 113, 113, 0.2)',
@@ -73,7 +75,8 @@ export const themeConfig = {
     toolbarBg: 'rgba(0, 0, 0, 0.8)',
     buttonBorderDefault: 'rgba(47, 51, 54, 0.4)',
     buttonBorderHover: 'rgba(47, 51, 54, 0.8)',
-    // Semantic colors
+    // Semantic colors (viewOriginalPlate = solid at bottom of gradient behind "View original post" button)
+    viewOriginalPlateSolid: '#000000',
     error: '#F87171',
     errorBg: 'rgba(248, 113, 113, 0.12)',
     errorShadow: '0 4px 12px rgba(248, 113, 113, 0.2)',

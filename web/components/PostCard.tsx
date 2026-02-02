@@ -2,7 +2,9 @@
 
 import { PostData, CardSettings, ShadowIntensity } from '@/types/post'
 import { getThemeStyles } from '@/lib/themes'
+import { formatPostTimestamp } from '@/lib/utils'
 import { ANIMATION_DELIBERATE, EASING_STANDARD, THEME_TRANSITION } from '@/constants/ui'
+import { POST_IMAGE_MAX_HEIGHT } from '@/constants/card'
 
 interface PostCardProps {
   post: PostData
@@ -14,6 +16,7 @@ interface PostCardProps {
 export default function PostCard({ post, settings, styleOverride }: PostCardProps) {
   const theme = getThemeStyles(settings.theme)
   const hasImages = post.content.images.length > 0
+  const formattedTimestamp = settings.showDate ? formatPostTimestamp(post.timestamp) : null
 
   // Map shadow intensity to Tailwind classes - type-safe mapping
   const shadowClasses: Record<ShadowIntensity, string> = {
@@ -163,6 +166,7 @@ export default function PostCard({ post, settings, styleOverride }: PostCardProp
                   style={{
                     borderRadius: imageBorderRadius,
                     aspectRatio: count === 1 ? '16/9' : isThirdImage ? '16/9' : '1',
+                    maxHeight: POST_IMAGE_MAX_HEIGHT,
                   }}
                 >
                   <img
@@ -187,6 +191,23 @@ export default function PostCard({ post, settings, styleOverride }: PostCardProp
               )
             })}
           </div>
+        </div>
+      )}
+
+      {/* Footer: post timestamp (when showDate is on) */}
+      {formattedTimestamp && (
+        <div
+          data-export="post-footer"
+          className="mt-4 pt-0"
+          style={{ color: theme.textSecondary }}
+        >
+          <time
+            dateTime={post.timestamp}
+            className="text-sm"
+            style={{ color: theme.textSecondary }}
+          >
+            {formattedTimestamp}
+          </time>
         </div>
       )}
 

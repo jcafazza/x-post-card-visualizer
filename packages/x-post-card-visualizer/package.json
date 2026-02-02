@@ -1,12 +1,12 @@
 {
   "name": "x-post-card-visualizer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Embed beautifully styled X (Twitter) post cards in your React app",
   "author": "John Cafazza",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/johncafazza/x-post-card-visualizer"
+    "url": "git+https://github.com/johncafazza/x-post-card-visualizer.git"
   },
   "homepage": "https://github.com/johncafazza/x-post-card-visualizer#readme",
   "keywords": [

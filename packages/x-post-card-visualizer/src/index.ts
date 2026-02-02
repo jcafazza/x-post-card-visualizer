@@ -7,6 +7,9 @@ export { PostCard, PostCardSkeleton } from './PostCard'
 // Theme utilities
 export { getThemeStyles, getShadowForIntensity, themeConfig } from './themes'
 
+// Formatting utilities (e.g. for card footer timestamp)
+export { formatPostTimestamp } from './utils'
+
 // Types
 export type {
   XCardProps,

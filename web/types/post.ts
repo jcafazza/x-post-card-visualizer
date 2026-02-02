@@ -51,7 +51,8 @@ export interface ThemeStyles {
   toolbarBg: string
   buttonBorderDefault: string
   buttonBorderHover: string
-  // Semantic colors
+  // Semantic colors (viewOriginalPlateSolid = bottom stop of gradient behind "View original post" button)
+  viewOriginalPlateSolid: string
   error: string
   errorBg: string
   errorShadow: string

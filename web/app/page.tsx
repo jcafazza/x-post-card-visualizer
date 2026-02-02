@@ -36,7 +36,7 @@ const INITIAL_SETTINGS: CardSettings = {
   theme: 'light',
   borderRadius: '20',
   shadowIntensity: 'floating',
-  showDate: false,
+  showDate: true,
   cardWidth: 500,
   customBorderRadius: 20,
 }

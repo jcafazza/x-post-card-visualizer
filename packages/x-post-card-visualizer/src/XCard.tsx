@@ -91,6 +91,7 @@ export function XCard({
   shadow = 'floating',
   width = 450,
   radius = 20,
+  showDate = true,
   apiUrl = DEFAULT_API_URL,
   className,
   fallback,
@@ -193,6 +194,7 @@ export function XCard({
           shadow={normalizedShadow}
           width={clampedWidth}
           radius={clampedRadius}
+          showDate={showDate}
         />
       </div>
     )

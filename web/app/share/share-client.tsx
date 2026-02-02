@@ -38,7 +38,7 @@ function parseShareSearch(search: string): { sourceUrl: string | null; initialSe
 
   const theme: Theme = isTheme(themeParam) ? themeParam : 'light'
   const shadowIntensity: ShadowIntensity = isShadow(shadowParam) ? shadowParam : 'floating'
-  const showDate = false
+  const showDate = params.get('showDate') !== 'false'
 
   const rawWidth = Number(cardWidthParam ?? CARD_DEFAULT_WIDTH)
   const cardWidth = Number.isFinite(rawWidth)

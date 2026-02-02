@@ -17,6 +17,8 @@ function escapeForDoubleQuotedJS(value: string): string {
 export function buildSnippet(settings: CardSettings, sourceUrl: string | null): string {
   const url = sourceUrl ?? PLACEHOLDER_URL
   const radius = settings.customBorderRadius ?? parseInt(settings.borderRadius, 10)
+  // Emit showDate so copied code matches the current preview (true or false).
+  const showDateLine = `\n      showDate={${settings.showDate}}`
 
   return `npm install x-post-card-visualizer
 import { XCard } from 'x-post-card-visualizer'
@@ -28,7 +30,7 @@ function MyComponent() {
       theme="${escapeForDoubleQuotedJS(settings.theme)}"
       shadow="${escapeForDoubleQuotedJS(settings.shadowIntensity)}"
       width={${settings.cardWidth}}
-      radius={${radius}}
+      radius={${radius}}${showDateLine}
     />
   )
 }`

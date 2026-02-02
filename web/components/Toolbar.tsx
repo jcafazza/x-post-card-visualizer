@@ -10,6 +10,7 @@ import {
   Moon,
   Code,
   Layers2,
+  Calendar,
   RotateCcw,
   Download,
   Link,
@@ -216,6 +217,7 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
     shareUrl.searchParams.set('url', sourceUrl ?? DEFAULT_PLACEHOLDER_SHARE_PARAM)
     shareUrl.searchParams.set('theme', settings.theme)
     shareUrl.searchParams.set('shadow', settings.shadowIntensity)
+    shareUrl.searchParams.set('showDate', String(settings.showDate))
     shareUrl.searchParams.set('cardWidth', String(settings.cardWidth))
     if (settings.customBorderRadius !== undefined) {
       shareUrl.searchParams.set('radius', String(settings.customBorderRadius))
@@ -281,6 +283,24 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
               style={{ opacity: shadowOpacityMap[settings.shadowIntensity] }}
               aria-hidden="true"
             />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              animateButtonPress('showDate')
+              onSettingsChange({ ...settings, showDate: !settings.showDate })
+            }}
+            onMouseEnter={() => setHoveredButton('showDate')}
+            onMouseLeave={() => setHoveredButton(null)}
+            onFocus={() => setFocusedButton('showDate')}
+            onBlur={() => setFocusedButton(null)}
+            className={buttonBase}
+            style={getButtonStyle('showDate', settings.showDate, hoveredButton === 'showDate', focusedButton === 'showDate')}
+            aria-label={settings.showDate ? 'Hide post date' : 'Show post date'}
+            aria-pressed={settings.showDate}
+          >
+            <Calendar className={iconClasses} strokeWidth={1.5} aria-hidden="true" />
           </button>
         </div>
 

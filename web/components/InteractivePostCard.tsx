@@ -1,19 +1,22 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import PostCard from './PostCard'
 import { PostData, CardSettings, ShadowIntensity } from '@/types/post'
 import { getThemeStyles } from '@/lib/themes'
-import { ANIMATION_MICRO, ANIMATION_STANDARD, ANIMATION_DELIBERATE, EASING_ELEGANT, EASING_STANDARD, EASING_BOUNCE, THEME_TRANSITION } from '@/constants/ui'
+import { ANIMATION_MICRO, ANIMATION_STANDARD, ANIMATION_DELIBERATE, EASING_ELEGANT, EASING_STANDARD, EASING_BOUNCE, THEME_TRANSITION, TOOLBAR_CARD_SPACING } from '@/constants/ui'
 import {
   CARD_MIN_WIDTH,
   CARD_MAX_WIDTH,
   CARD_MAX_RADIUS,
   CARD_CORNER_ZONE,
   CARD_HANDLE_LENGTH,
+  CARD_BORDER_WIDTH,
   RUBBERBAND_MAX_OVERSHOOT as RUBBERBAND_MAX_OVERSHOOT_PX,
   CARD_BOTTOM_MARGIN,
+  CARD_BOTTOM_TO_VIEW_ORIGINAL_GAP,
+  VIEW_ORIGINAL_PLATE_HEIGHT,
 } from '@/constants/card'
 import { isBorderRadius } from '@/lib/utils'
 
@@ -41,6 +44,26 @@ const RESIZE_CURSORS: Record<CornerKey, string> = {
 
 const CORNERS: CornerKey[] = ['top-left', 'top-right', 'bottom-left', 'bottom-right']
 
+/** Position/dimension config per corner for L-shaped handle indicators (theme-agnostic). */
+const CORNER_POSITION_CONFIGS: Record<CornerKey, { horizontal: React.CSSProperties; vertical: React.CSSProperties }> = {
+  'top-left': {
+    horizontal: { position: 'absolute', left: '-8px', top: '0px', width: `${CARD_HANDLE_LENGTH}px`, height: '2px' },
+    vertical: { position: 'absolute', left: '0px', top: '-8px', width: '2px', height: `${CARD_HANDLE_LENGTH}px` },
+  },
+  'top-right': {
+    horizontal: { position: 'absolute', right: '-8px', top: '0px', width: `${CARD_HANDLE_LENGTH}px`, height: '2px' },
+    vertical: { position: 'absolute', right: '0px', top: '-8px', width: '2px', height: `${CARD_HANDLE_LENGTH}px` },
+  },
+  'bottom-left': {
+    horizontal: { position: 'absolute', left: '-8px', bottom: '0px', width: `${CARD_HANDLE_LENGTH}px`, height: '2px' },
+    vertical: { position: 'absolute', left: '0px', bottom: '-8px', width: '2px', height: `${CARD_HANDLE_LENGTH}px` },
+  },
+  'bottom-right': {
+    horizontal: { position: 'absolute', right: '-8px', bottom: '0px', width: `${CARD_HANDLE_LENGTH}px`, height: '2px' },
+    vertical: { position: 'absolute', right: '0px', bottom: '-8px', width: '2px', height: `${CARD_HANDLE_LENGTH}px` },
+  },
+}
+
 function getShadowForIntensity(
   theme: { shadowShallow: string; shadowMedium: string; shadowDeep: string },
   intensity: ShadowIntensity
@@ -59,43 +82,207 @@ function getShadowForIntensity(
   }
 }
 
-function useCrossfadeText(targetText: string) {
-  const [fromText, setFromText] = useState<string | null>(null)
-  const [toText, setToText] = useState<string>(targetText)
-  const [showTo, setShowTo] = useState(true)
-  const timerRef = useRef<NodeJS.Timeout | null>(null)
-  const rafRef = useRef<number | null>(null)
+/** Reveal transition for gradient plate and "View original post" strip (smooth ease-out, no pop). */
+function getRevealTransition(prefersReducedMotion: boolean): string {
+  return prefersReducedMotion ? 'opacity 100ms ease-out' : `opacity ${ANIMATION_STANDARD}ms ${EASING_STANDARD}`
+}
 
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current)
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
-    }
-  }, [])
+/** Gradient plate + "View original post" button strip; shown when sourceUrl is set, visibility tied to card hover. */
+function ViewOriginalStrip({
+  sourceUrl,
+  stripVisible,
+  theme,
+  cardRadiusPx,
+  buttonMinWidth,
+  prefersReducedMotion,
+  revealTransition,
+}: {
+  sourceUrl: string
+  stripVisible: boolean
+  theme: ReturnType<typeof getThemeStyles>
+  cardRadiusPx: number
+  buttonMinWidth: number | null
+  prefersReducedMotion: boolean
+  revealTransition: string
+}) {
+  return (
+    <>
+      <div
+        className="absolute pointer-events-none overflow-hidden"
+        style={{
+          left: CARD_BORDER_WIDTH,
+          right: CARD_BORDER_WIDTH,
+          bottom: CARD_BORDER_WIDTH,
+          height: VIEW_ORIGINAL_PLATE_HEIGHT,
+          borderBottomLeftRadius: Math.max(0, cardRadiusPx - CARD_BORDER_WIDTH),
+          borderBottomRightRadius: Math.max(0, cardRadiusPx - CARD_BORDER_WIDTH),
+          zIndex: 1,
+          opacity: stripVisible ? 1 : 0,
+          transition: revealTransition,
+        }}
+        aria-hidden
+      >
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: `linear-gradient(to bottom, transparent, ${theme.viewOriginalPlateSolid})`,
+            transition: THEME_TRANSITION,
+          }}
+        />
+      </div>
+      <div
+        className="absolute left-0 right-0 flex items-center justify-center pointer-events-none"
+        style={{
+          bottom: 0,
+          paddingBottom: CARD_BOTTOM_TO_VIEW_ORIGINAL_GAP,
+          paddingTop: CARD_BOTTOM_TO_VIEW_ORIGINAL_GAP + TOOLBAR_CARD_SPACING,
+          opacity: stripVisible ? 1 : 0,
+          transition: revealTransition,
+        }}
+      >
+        <a
+          href={sourceUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="relative z-10 inline-flex items-center justify-center text-sm font-medium px-4 py-2 hover:brightness-105 active:scale-[0.99] whitespace-nowrap pointer-events-auto"
+          style={{
+            backgroundColor: theme.bg,
+            color: theme.textSecondary,
+            border: 'none',
+            borderRadius: cardRadiusPx,
+            boxShadow: `${theme.shadowShallow}, 0 0 0 1px ${theme.imageInnerStroke}`,
+            minWidth: buttonMinWidth ? `${buttonMinWidth}px` : undefined,
+            transform: stripVisible ? 'translateY(0)' : 'translateY(8px)',
+            transition: prefersReducedMotion
+              ? 'filter 100ms ease-out'
+              : `${THEME_TRANSITION}, filter ${ANIMATION_MICRO}ms ${EASING_ELEGANT}, transform ${ANIMATION_STANDARD}ms ${EASING_STANDARD}`,
+          }}
+        >
+          {VIEW_ORIGINAL_LABEL}
+        </a>
+      </div>
+    </>
+  )
+}
 
-  useEffect(() => {
-    if (targetText === toText && showTo) return
+/** Px readout shown below card while resizing (width or radius). */
+function ResizeValueReadout({
+  valueLabel,
+  isMounted,
+  isVisible,
+  theme,
+  minWidth,
+}: {
+  valueLabel: string
+  isMounted: boolean
+  isVisible: boolean
+  theme: ReturnType<typeof getThemeStyles>
+  minWidth: number | null
+}) {
+  if (!isMounted || !valueLabel) return null
+  return (
+    <div className="flex justify-center" style={{ marginTop: CARD_BOTTOM_MARGIN }}>
+      <div
+        role="status"
+        aria-live="polite"
+        className="inline-flex items-center justify-center text-sm font-medium px-4 py-2 rounded-full border whitespace-nowrap"
+        style={{
+          backgroundColor: theme.appBg,
+          color: theme.textSecondary,
+          borderColor: theme.buttonBorderDefault,
+          boxShadow: theme.shadowShallow,
+          minWidth: minWidth ? `${minWidth}px` : undefined,
+          opacity: isVisible ? 1 : 0,
+          transition: `opacity ${ANIMATION_DELIBERATE}ms ${EASING_ELEGANT}`,
+          pointerEvents: 'none',
+        }}
+      >
+        {valueLabel}
+      </div>
+    </div>
+  )
+}
 
-    // Crossfade: render both strings and fade from -> to.
-    setFromText(toText)
-    setToText(targetText)
-    setShowTo(false)
-
-    if (timerRef.current) clearTimeout(timerRef.current)
-    if (rafRef.current) cancelAnimationFrame(rafRef.current)
-
-    rafRef.current = requestAnimationFrame(() => {
-      setShowTo(true)
-      rafRef.current = null
-    })
-
-    timerRef.current = setTimeout(() => {
-      setFromText(null)
-      timerRef.current = null
-    }, ANIMATION_MICRO)
-  }, [targetText, toText, showTo])
-
-  return { fromText, toText, showTo }
+/** Resize handles and corner indicators (visual + hit targets). Only rendered when !lockLayout. */
+function CardResizeHandles({
+  theme,
+  hoveredCorner,
+  isResizingRadius,
+  cornerConfigs,
+  onMouseDown,
+}: {
+  theme: ReturnType<typeof getThemeStyles>
+  hoveredCorner: string | null
+  isResizingRadius: boolean
+  cornerConfigs: Record<CornerKey, { horizontal: React.CSSProperties; vertical: React.CSSProperties }>
+  onMouseDown: (e: React.MouseEvent, type: 'width-left' | 'width-right' | 'corner', corner?: string) => void
+}) {
+  return (
+    <>
+      <div
+        className="absolute left-0 top-1/2 -translate-x-full -translate-y-1/2 w-2 h-12 pointer-events-none flex items-center justify-end pr-1"
+        style={{ left: '-8px' }}
+        aria-hidden
+      >
+        <div
+          className="w-0.5 h-full rounded-full"
+          style={{ backgroundColor: theme.textTertiary, opacity: 0.3, transition: THEME_TRANSITION }}
+        />
+      </div>
+      <div
+        className="absolute right-0 top-1/2 translate-x-full -translate-y-1/2 w-2 h-12 pointer-events-none flex items-center justify-start pl-1"
+        style={{ right: '-8px' }}
+        aria-hidden
+      >
+        <div
+          className="w-0.5 h-full rounded-full"
+          style={{ backgroundColor: theme.textTertiary, opacity: 0.3, transition: THEME_TRANSITION }}
+        />
+      </div>
+      {CORNERS.map((corner) => {
+        const isHovered = hoveredCorner === corner
+        const isActive = isResizingRadius
+        if (!isActive && !isHovered) return null
+        const config = cornerConfigs[corner]
+        return (
+          <div key={corner} className="absolute inset-0 pointer-events-none">
+            <div style={config.horizontal} />
+            <div style={config.vertical} />
+          </div>
+        )
+      })}
+      <button
+        type="button"
+        className="absolute left-0 top-0 bottom-0 w-11 z-10 bg-transparent border-0 p-0"
+        style={{ left: '-20px', cursor: 'ew-resize' }}
+        onMouseDown={(e) => onMouseDown(e, 'width-left')}
+        aria-label="Resize width left"
+      />
+      <button
+        type="button"
+        className="absolute right-0 top-0 bottom-0 w-11 z-10 bg-transparent border-0 p-0"
+        style={{ right: '-20px', cursor: 'ew-resize' }}
+        onMouseDown={(e) => onMouseDown(e, 'width-right')}
+        aria-label="Resize width right"
+      />
+      {CORNERS.map((corner) => (
+        <button
+          key={corner}
+          type="button"
+          className="absolute z-10 pointer-events-auto bg-transparent border-0 p-0"
+          style={{
+            [corner.includes('left') ? 'left' : 'right']: `-${CARD_CORNER_ZONE}px`,
+            [corner.includes('top') ? 'top' : 'bottom']: `-${CARD_CORNER_ZONE}px`,
+            width: `${CARD_CORNER_ZONE * 2}px`,
+            height: `${CARD_CORNER_ZONE * 2}px`,
+            cursor: RESIZE_CURSORS[corner],
+          }}
+          onMouseDown={(e) => onMouseDown(e, 'corner', corner)}
+          aria-label={`Resize corner ${corner}`}
+        />
+      ))}
+    </>
+  )
 }
 
 export default function InteractivePostCard({ post, settings, onSettingsChange, sourceUrl, lockLayout = false, sharePhase2Revealed }: InteractivePostCardProps) {
@@ -104,9 +291,11 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
   const [hoveredCorner, setHoveredCorner] = useState<string | null>(null)
   const [valueLabel, setValueLabel] = useState<string | null>(null)
   const [visualWidth, setVisualWidth] = useState<number | null>(null)
+  const [cardHovered, setCardHovered] = useState(false)
   const prefersReducedMotion = useReducedMotion()
 
   const cardRef = useRef<HTMLDivElement>(null)
+  const cardAreaRef = useRef<HTMLDivElement>(null)
   const resizeTypeRef = useRef<'width-left' | 'width-right' | null>(null)
   const startXRef = useRef<number>(0)
   const startWidthRef = useRef<number>(0)
@@ -120,6 +309,43 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
   onSettingsChangeRef.current = onSettingsChange
 
   const theme = getThemeStyles(settings.theme)
+  const cardRadiusPx = settings.customBorderRadius ?? parseInt(settings.borderRadius, 10)
+  const stripVisible = sourceUrl && cardHovered
+
+  const revealTransition = useMemo(() => getRevealTransition(prefersReducedMotion), [prefersReducedMotion])
+
+  const cornerHandleStyle = useMemo<React.CSSProperties>(
+    () => ({ backgroundColor: theme.textTertiary, opacity: 0.3, borderRadius: '2px' }),
+    [theme.textTertiary]
+  )
+  const cornerConfigs = useMemo(
+    () =>
+      (Object.keys(CORNER_POSITION_CONFIGS) as CornerKey[]).reduce(
+        (acc, corner) => {
+          const base = CORNER_POSITION_CONFIGS[corner]
+          acc[corner] = {
+            horizontal: { ...base.horizontal, ...cornerHandleStyle },
+            vertical: { ...base.vertical, ...cornerHandleStyle },
+          }
+          return acc
+        },
+        {} as Record<CornerKey, { horizontal: React.CSSProperties; vertical: React.CSSProperties }>
+      ),
+    [cornerHandleStyle]
+  )
+
+  const postCardSettings = useMemo(() => {
+    const radiusStr = String(Math.round(settings.customBorderRadius))
+    return {
+      ...settings,
+      borderRadius: isBorderRadius(radiusStr) ? radiusStr : '20',
+    }
+  }, [settings])
+
+  const postCardStyleOverride = useMemo(() => {
+    if (!lockLayout || !sourceUrl || sharePhase2Revealed === undefined) return undefined
+    return { boxShadow: sharePhase2Revealed ? getShadowForIntensity(theme, settings.shadowIntensity) : 'none' }
+  }, [lockLayout, sourceUrl, sharePhase2Revealed, theme, settings.shadowIntensity])
 
   // Button label + visibility behavior:
   // - If sourceUrl exists: button is always visible and clickable; label crossfades between
@@ -294,51 +520,64 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
     }
   }, [])
 
-  const handleMouseDown = (
-    e: React.MouseEvent,
-    type: 'width-left' | 'width-right' | 'corner',
-    corner?: string
-  ) => {
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent, type: 'width-left' | 'width-right' | 'corner', corner?: string) => {
+      try {
+        if (!e) return
+        e.preventDefault()
+        e.stopPropagation()
+        if (lockLayout) return
+
+        if (labelResetTimerRef.current) {
+          clearTimeout(labelResetTimerRef.current)
+          labelResetTimerRef.current = null
+        }
+
+        if (type === 'width-left' || type === 'width-right') {
+          setResizeCursor('ew-resize')
+          setIsResizingWidth(true)
+          resizeTypeRef.current = type
+          startXRef.current = e.clientX
+          const snappedStartWidth = Math.round(settings.cardWidth / 2) * 2
+          startWidthRef.current = snappedStartWidth
+          setVisualWidth(null)
+          setValueLabel(`${snappedStartWidth}px`)
+        } else if (type === 'corner' && corner) {
+          setResizeCursor(RESIZE_CURSORS[corner as CornerKey] ?? 'default')
+          setIsResizingRadius(true)
+          setHoveredCorner(corner)
+          startRadiusRef.current = settings.customBorderRadius
+          setValueLabel(`${settings.customBorderRadius}px`)
+        }
+      } catch (_) {
+        // Safari/WebKit can throw on event dispatch; avoid breaking the app
+      }
+    },
+    [lockLayout, settings.cardWidth, settings.customBorderRadius]
+  )
+
+  const handleHoverMove = useCallback((e: React.MouseEvent) => {
     try {
-      if (!e) return
-      e.preventDefault()
-      e.stopPropagation()
+      if (!e || isResizingWidth || isResizingRadius) return
+
+      const { clientX, clientY } = e
+
+      // View original post hover: only true when pointer is inside the card area (same logic for Customization and Share Link).
+      if (sourceUrl) {
+        const cardAreaRect = cardAreaRef.current?.getBoundingClientRect()
+        if (cardAreaRect) {
+          const { left, right, top, bottom } = cardAreaRect
+          const inside =
+            clientX >= left && clientX <= right && clientY >= top && clientY <= bottom
+          setCardHovered(inside)
+        }
+      }
+
       if (lockLayout) return
-
-      if (labelResetTimerRef.current) {
-        clearTimeout(labelResetTimerRef.current)
-        labelResetTimerRef.current = null
-      }
-
-      if (type === 'width-left' || type === 'width-right') {
-        setResizeCursor('ew-resize')
-        setIsResizingWidth(true)
-        resizeTypeRef.current = type
-        startXRef.current = e.clientX
-        const snappedStartWidth = Math.round(settings.cardWidth / 2) * 2
-        startWidthRef.current = snappedStartWidth
-        setVisualWidth(null)
-        setValueLabel(`${snappedStartWidth}px`)
-      } else if (type === 'corner' && corner) {
-        setResizeCursor(RESIZE_CURSORS[corner as CornerKey] ?? 'default')
-        setIsResizingRadius(true)
-        setHoveredCorner(corner)
-        startRadiusRef.current = settings.customBorderRadius
-        setValueLabel(`${settings.customBorderRadius}px`)
-      }
-    } catch (_) {
-      // Safari/WebKit can throw on event dispatch; avoid breaking the app
-    }
-  }
-
-  const handleHoverMove = (e: React.MouseEvent) => {
-    try {
-      if (!e || lockLayout || isResizingWidth || isResizingRadius) return
 
       const cardRect = cardRef.current?.getBoundingClientRect()
       if (!cardRect) return
 
-      const { clientX, clientY } = e
       const { left, right, top, bottom } = cardRect
 
       const cornerZones = {
@@ -370,46 +609,30 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
     } catch (_) {
       // Safari/WebKit can throw on event dispatch; avoid breaking the app
     }
-  }
+  }, [sourceUrl, isResizingWidth, isResizingRadius, lockLayout])
 
-  const handleHoverLeave = () => {
+  const handleHoverLeave = useCallback(() => {
     try {
       if (!isResizingWidth && !isResizingRadius) {
         clearResizeCursor()
         setHoveredCorner(null)
       }
+      setCardHovered(false)
     } catch (_) {
       // Safari/WebKit can throw on event dispatch; avoid breaking the app
     }
-  }
+  }, [isResizingWidth, isResizingRadius])
 
-  const buttonLabelTarget = valueLabel ?? VIEW_ORIGINAL_LABEL
-  const { fromText, toText, showTo } = useCrossfadeText(buttonLabelTarget)
-  const isShowingValueLabel = valueLabel !== null
-
+  // Single layout effect: measure both button min widths (View original + px readout).
   useLayoutEffect(() => {
-    const meas = measureRef.current
-    if (!meas) return
-
-    const textWidth = meas.getBoundingClientRect().width
-    // Our button uses px-4 (16px left/right) and a 1px border.
-    // Keep a stable minimum width so "View original post" never wraps.
-    setButtonMinWidth(Math.ceil(textWidth + 16 + 16 + 1 + 1))
+    const viewOriginalWidth = measureRef.current?.getBoundingClientRect().width
+    const valueReadoutWidth = valueMeasureRef.current?.getBoundingClientRect().width
+    if (viewOriginalWidth != null) setButtonMinWidth(Math.ceil(viewOriginalWidth + 16 + 16 + 1 + 1))
+    if (valueReadoutWidth != null) setValueButtonMinWidth(Math.ceil(valueReadoutWidth + 16 + 16 + 1 + 1))
   }, [])
 
-  useLayoutEffect(() => {
-    const meas = valueMeasureRef.current
-    if (!meas) return
-
-    const textWidth = meas.getBoundingClientRect().width
-    // px-4 + 1px border on each side.
-    setValueButtonMinWidth(Math.ceil(textWidth + 16 + 16 + 1 + 1))
-  }, [])
-
-  // If there's no source URL, mount/fade the value button while resizing.
+  // Mount/fade the px value readout while resizing (empty state and imported state).
   useEffect(() => {
-    if (sourceUrl) return
-
     const shouldShow = valueLabel !== null
 
     if (shouldShow) {
@@ -483,205 +706,46 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
         onMouseLeave={handleHoverLeave}
       >
         {!lockLayout && (
-          <>
-            {/* Left handle (visual); hit target is the width button below */}
-            <div
-              className="absolute left-0 top-1/2 -translate-x-full -translate-y-1/2 w-2 h-12 pointer-events-none flex items-center justify-end pr-1"
-              style={{ left: '-8px' }}
-              aria-hidden
-            >
-              <div
-                className="w-0.5 h-full rounded-full"
-                style={{ backgroundColor: theme.textTertiary, opacity: 0.3, transition: THEME_TRANSITION }}
-              />
-            </div>
-
-            {/* Right Handle - visual only */}
-            <div
-              className="absolute right-0 top-1/2 translate-x-full -translate-y-1/2 w-2 h-12 pointer-events-none flex items-center justify-start pl-1"
-              style={{ right: '-8px' }}
-              aria-hidden
-            >
-              <div
-                className="w-0.5 h-full rounded-full"
-                style={{ backgroundColor: theme.textTertiary, opacity: 0.3, transition: THEME_TRANSITION }}
-              />
-            </div>
-
-            {/* Corner Indicators - L-shaped */}
-            {CORNERS.map((corner) => {
-          const isHovered = hoveredCorner === corner
-          const isActive = isResizingRadius
-          if (!isActive && !isHovered) return null
-
-          const handleStyle: React.CSSProperties = {
-            backgroundColor: theme.textTertiary,
-            opacity: 0.3,
-            borderRadius: '2px',
-          }
-
-          const cornerConfigs: Record<string, { horizontal: React.CSSProperties; vertical: React.CSSProperties }> = {
-            'top-left': {
-              horizontal: { position: 'absolute', left: '-8px', top: '0px', width: `${CARD_HANDLE_LENGTH}px`, height: '2px', ...handleStyle },
-              vertical: { position: 'absolute', left: '0px', top: '-8px', width: '2px', height: `${CARD_HANDLE_LENGTH}px`, ...handleStyle },
-            },
-            'top-right': {
-              horizontal: { position: 'absolute', right: '-8px', top: '0px', width: `${CARD_HANDLE_LENGTH}px`, height: '2px', ...handleStyle },
-              vertical: { position: 'absolute', right: '0px', top: '-8px', width: '2px', height: `${CARD_HANDLE_LENGTH}px`, ...handleStyle },
-            },
-            'bottom-left': {
-              horizontal: { position: 'absolute', left: '-8px', bottom: '0px', width: `${CARD_HANDLE_LENGTH}px`, height: '2px', ...handleStyle },
-              vertical: { position: 'absolute', left: '0px', bottom: '-8px', width: '2px', height: `${CARD_HANDLE_LENGTH}px`, ...handleStyle },
-            },
-            'bottom-right': {
-              horizontal: { position: 'absolute', right: '-8px', bottom: '0px', width: `${CARD_HANDLE_LENGTH}px`, height: '2px', ...handleStyle },
-              vertical: { position: 'absolute', right: '0px', bottom: '-8px', width: '2px', height: `${CARD_HANDLE_LENGTH}px`, ...handleStyle },
-            },
-          }
-
-          const config = cornerConfigs[corner]
-          return (
-            <div key={corner} className="absolute inset-0 pointer-events-none">
-              <div style={config.horizontal} />
-              <div style={config.vertical} />
-            </div>
-          )
-        })}
-
-            {/* Resize handles: large touch targets, cursor on handle */}
-            <button
-              type="button"
-              className="absolute left-0 top-0 bottom-0 w-11 z-10 bg-transparent border-0 p-0"
-              style={{ left: '-20px', cursor: 'ew-resize' }}
-              onMouseDown={(e) => handleMouseDown(e, 'width-left')}
-              aria-label="Resize width left"
-            />
-            <button
-              type="button"
-              className="absolute right-0 top-0 bottom-0 w-11 z-10 bg-transparent border-0 p-0"
-              style={{ right: '-20px', cursor: 'ew-resize' }}
-              onMouseDown={(e) => handleMouseDown(e, 'width-right')}
-              aria-label="Resize width right"
-            />
-            {CORNERS.map((corner) => (
-                <button
-                  key={corner}
-                  type="button"
-                  className="absolute z-10 pointer-events-auto bg-transparent border-0 p-0"
-                  style={{
-                    [corner.includes('left') ? 'left' : 'right']: `-${CARD_CORNER_ZONE}px`,
-                    [corner.includes('top') ? 'top' : 'bottom']: `-${CARD_CORNER_ZONE}px`,
-                    width: `${CARD_CORNER_ZONE * 2}px`,
-                    height: `${CARD_CORNER_ZONE * 2}px`,
-                    cursor: RESIZE_CURSORS[corner],
-                  }}
-                  onMouseDown={(e) => handleMouseDown(e, 'corner', corner)}
-                  aria-label={`Resize corner ${corner}`}
-                />
-            ))}
-          </>
+          <CardResizeHandles
+            theme={theme}
+            hoveredCorner={hoveredCorner}
+            isResizingRadius={isResizingRadius}
+            cornerConfigs={cornerConfigs}
+            onMouseDown={handleMouseDown}
+          />
         )}
 
-        <PostCard
-          post={post}
-          settings={{
-            ...settings,
-            borderRadius: (() => {
-              const radiusStr = String(Math.round(settings.customBorderRadius))
-              return isBorderRadius(radiusStr) ? radiusStr : '20'
-            })(),
-          }}
-          styleOverride={
-            lockLayout && sourceUrl && sharePhase2Revealed !== undefined
-              ? { boxShadow: sharePhase2Revealed ? getShadowForIntensity(theme, settings.shadowIntensity) : 'none' }
-              : undefined
-          }
-        />
+        {/* Card area: contains card + button. cardAreaRef used for hover bounds so button hides when pointer leaves. No overflow:hidden so card shadow is not clipped. */}
+        <div
+          ref={cardAreaRef}
+          className="relative w-full"
+          style={{ borderRadius: cardRadiusPx }}
+          aria-hidden
+        >
+          <PostCard post={post} settings={postCardSettings} styleOverride={postCardStyleOverride} />
+
+          {sourceUrl && (
+            <ViewOriginalStrip
+              sourceUrl={sourceUrl}
+              stripVisible={!!stripVisible}
+              theme={theme}
+              cardRadiusPx={cardRadiusPx}
+              buttonMinWidth={buttonMinWidth}
+              prefersReducedMotion={prefersReducedMotion}
+              revealTransition={revealTransition}
+            />
+          )}
+        </div>
       </div>
 
-      {/* Button hidden when no source URL */}
-      {sourceUrl && (
-        <div
-          className="flex justify-center"
-          style={{
-            marginTop: CARD_BOTTOM_MARGIN,
-            ...(lockLayout && sharePhase2Revealed !== undefined
-              ? {
-                  opacity: sharePhase2Revealed ? 1 : 0,
-                  transition: THEME_TRANSITION,
-                }
-              : {}),
-          }}
-        >
-          <a
-            href={sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center justify-center text-sm font-medium px-4 py-2 rounded-full border hover:brightness-105 active:scale-[0.99] whitespace-nowrap"
-            style={{
-              backgroundColor: theme.appBg,
-              color: theme.textSecondary,
-              borderColor: theme.buttonBorderDefault,
-              boxShadow: theme.shadowShallow,
-              // Match the fixed-width behavior of the "no source URL" px readout while resizing.
-              minWidth: isShowingValueLabel
-                ? valueButtonMinWidth
-                  ? `${valueButtonMinWidth}px`
-                  : undefined
-                : buttonMinWidth
-                  ? `${buttonMinWidth}px`
-                  : undefined,
-              // Intentionally avoid animating layout-affecting properties (like min-width).
-              transition: `${THEME_TRANSITION}, filter ${ANIMATION_MICRO}ms ${EASING_ELEGANT}`,
-            }}
-          >
-            <span className="relative inline-flex">
-              {fromText && (
-                <span
-                  className="absolute inset-0"
-                  style={{
-                    opacity: showTo ? 0 : 1,
-                    transition: `opacity ${ANIMATION_MICRO}ms ${EASING_ELEGANT}`,
-                  }}
-                >
-                  {fromText}
-                </span>
-              )}
-              <span
-                style={{
-                  opacity: showTo ? 1 : 0,
-                  transition: `opacity ${ANIMATION_MICRO}ms ${EASING_ELEGANT}`,
-                }}
-              >
-                {toText}
-              </span>
-            </span>
-          </a>
-        </div>
-      )}
-
-      {/* If there's no source URL, show a temporary px readout button while resizing. */}
-      {!sourceUrl && isValueButtonMounted && valueLabel && (
-        <div className="flex justify-center" style={{ marginTop: CARD_BOTTOM_MARGIN }}>
-          <div
-            role="status"
-            aria-live="polite"
-            className="inline-flex items-center justify-center text-sm font-medium px-4 py-2 rounded-full border whitespace-nowrap"
-            style={{
-              backgroundColor: theme.appBg,
-              color: theme.textSecondary,
-              borderColor: theme.buttonBorderDefault,
-              boxShadow: theme.shadowShallow,
-              minWidth: valueButtonMinWidth ? `${valueButtonMinWidth}px` : undefined,
-              opacity: isValueButtonVisible ? 1 : 0,
-              transition: `opacity ${ANIMATION_DELIBERATE}ms ${EASING_ELEGANT}`,
-              pointerEvents: 'none',
-            }}
-          >
-            {valueLabel}
-          </div>
-
-        </div>
+      {(isValueButtonMounted || valueLabel != null) && (
+        <ResizeValueReadout
+          valueLabel={valueLabel ?? ''}
+          isMounted={isValueButtonMounted}
+          isVisible={isValueButtonVisible}
+          theme={theme}
+          minWidth={valueButtonMinWidth}
+        />
       )}
 
       {/* Hidden measurers (always mounted so measurements are reliable). */}

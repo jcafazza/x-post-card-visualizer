@@ -31,3 +31,6 @@ export function hexToRgba(hex: string, opacity: number): string {
 export function isBorderRadius(value: unknown): value is BorderRadius {
   return typeof value === 'string' && VALID_RADII.includes(value as BorderRadius)
 }
+
+/** Re-export so web and package share one implementation (card footer timestamp formatting). */
+export { formatPostTimestamp } from 'x-post-card-visualizer'

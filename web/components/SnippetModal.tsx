@@ -23,6 +23,7 @@ const API_PROPS = [
   { prop: 'shadow', type: "'flat' | 'raised' | 'floating' | 'elevated'", default: "'floating'", description: 'Shadow intensity' },
   { prop: 'width', type: 'number', default: '450', description: 'Card width in pixels (350–700)' },
   { prop: 'radius', type: 'number', default: '20', description: 'Border radius in pixels (0–24)' },
+  { prop: 'showDate', type: 'boolean', default: 'true', description: 'Show post timestamp in card footer' },
   { prop: 'apiUrl', type: 'string', default: '(hosted)', description: 'Custom API endpoint' },
   { prop: 'className', type: 'string', default: '—', description: 'Custom wrapper className' },
   { prop: 'fallback', type: 'ReactNode', default: 'skeleton', description: 'Loading placeholder' },
@@ -366,10 +367,11 @@ export default function SnippetModal({
                   <thead>
                     <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
                       <th
-                        className="text-left py-3 px-3 font-medium align-middle sticky left-0 z-[1] relative"
+                        className="text-left py-3 px-3 font-medium align-middle sticky left-0 z-[1] relative whitespace-nowrap"
                         style={{
                           color: theme.textSecondary,
                           background: `linear-gradient(to right, ${theme.appBg} 0%, ${theme.appBg} calc(100% - 24px), transparent 100%)`,
+                          minWidth: '8rem',
                         }}
                       >
                         Prop
@@ -401,9 +403,10 @@ export default function SnippetModal({
                         }}
                       >
                         <td
-                          className="py-3 px-3 align-middle sticky left-0 z-[1] relative"
+                          className="py-3 px-3 align-middle sticky left-0 z-[1] relative whitespace-nowrap"
                           style={{
                             background: `linear-gradient(to right, ${theme.appBg} 0%, ${theme.appBg} calc(100% - 24px), transparent 100%)`,
+                            minWidth: '8rem',
                           }}
                         >
                           <span

@@ -1,6 +1,7 @@
 import * as React from 'react'
 import type { PostData, ShadowIntensity, ThemeStyles } from './types'
 import { getShadowForIntensity } from './themes'
+import { formatPostTimestamp } from './utils'
 
 interface PostCardProps {
   post: PostData
@@ -8,6 +9,8 @@ interface PostCardProps {
   shadow: ShadowIntensity
   width: number
   radius: number
+  /** When true, show post timestamp in card footer (default: true) */
+  showDate?: boolean
 }
 
 /** Verified badge SVG icon */
@@ -80,12 +83,13 @@ export function PostCardSkeleton({ width, radius }: { width: number; radius: num
 }
 
 /** The styled post card component */
-export function PostCard({ post, theme, shadow, width, radius }: PostCardProps) {
+export function PostCard({ post, theme, shadow, width, radius, showDate = true }: PostCardProps) {
   const hasImages = post.content.images.length > 0
 
   // Nested radii for images (concentric with card corners)
   const CARD_PADDING = 24
   const nestedRadius = hasImages ? Math.max(0, radius - CARD_PADDING) : 16
+  const POST_IMAGE_MAX_HEIGHT = 200
 
   const boxShadow = getShadowForIntensity(theme, shadow)
 
@@ -242,6 +246,7 @@ export function PostCard({ post, theme, shadow, width, radius }: PostCardProps) 
                     overflow: 'hidden',
                     borderRadius: nestedRadius,
                     aspectRatio: count === 1 ? '16/9' : isThirdImage ? '16/9' : '1',
+                    maxHeight: POST_IMAGE_MAX_HEIGHT,
                     gridColumn: isThirdImage ? 'span 2' : undefined,
                   }}
                 >
@@ -275,6 +280,23 @@ export function PostCard({ post, theme, shadow, width, radius }: PostCardProps) 
           </div>
         </div>
       )}
+
+      {/* Footer: post timestamp (when showDate is on) */}
+      {showDate && (() => {
+        const formatted = formatPostTimestamp(post.timestamp)
+        if (!formatted) return null
+        return (
+          <div
+            style={{
+              marginTop: 16,
+              fontSize: 14,
+              color: theme.textSecondary,
+            }}
+          >
+            <time dateTime={post.timestamp}>{formatted}</time>
+          </div>
+        )
+      })()}
     </div>
   )
 }

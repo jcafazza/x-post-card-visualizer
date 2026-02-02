@@ -52,8 +52,11 @@ export interface XCardProps {
   /** Card width in pixels (default: 450, range: 350-700) */
   width?: number
 
-  /** Border radius in pixels (default: 20, range: 0-24) */
+  /** Border radius in pixels (default: 20, range: 0-40) */
   radius?: number
+
+  /** Show post timestamp in card footer (default: true) */
+  showDate?: boolean
 
   /** API endpoint override (defaults to hosted API) */
   apiUrl?: string
