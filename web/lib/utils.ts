@@ -32,5 +32,16 @@ export function isBorderRadius(value: unknown): value is BorderRadius {
   return typeof value === 'string' && VALID_RADII.includes(value as BorderRadius)
 }
 
-/** Re-export so web and package share one implementation (card footer timestamp formatting). */
-export { formatPostTimestamp } from 'x-post-card-visualizer'
+/**
+ * Formats an ISO timestamp for the card footer (e.g. "Jan 22, 2026 · 11:37 PM").
+ * Returns null for invalid or missing input. Kept in sync with packages/x-post-card-visualizer/src/utils.ts
+ * so the web app can build without resolving the workspace package (e.g. on Vercel when only web is deployed).
+ */
+export function formatPostTimestamp(isoTimestamp: string | undefined | null): string | null {
+  if (!isoTimestamp || typeof isoTimestamp !== 'string') return null
+  const date = new Date(isoTimestamp)
+  if (Number.isNaN(date.getTime())) return null
+  const datePart = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  const timePart = date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true })
+  return `${datePart} · ${timePart}`
+}
