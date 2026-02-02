@@ -131,7 +131,7 @@ function ViewOriginalStrip({
         />
       </div>
       <div
-        className="absolute left-0 right-0 flex items-center justify-center pointer-events-none"
+        className={`absolute left-0 right-0 flex items-center justify-center ${stripVisible ? '' : 'pointer-events-none'}`}
         style={{
           bottom: 0,
           paddingBottom: CARD_BOTTOM_TO_VIEW_ORIGINAL_GAP,
@@ -144,7 +144,7 @@ function ViewOriginalStrip({
           href={sourceUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="relative z-10 inline-flex items-center justify-center text-sm font-medium px-4 py-2 hover:brightness-105 active:scale-[0.99] whitespace-nowrap pointer-events-auto"
+          className="relative z-10 inline-flex items-center justify-center text-sm font-medium px-4 py-2 hover:brightness-105 active:scale-[0.99] whitespace-nowrap"
           style={{
             backgroundColor: theme.bg,
             color: theme.textSecondary,
