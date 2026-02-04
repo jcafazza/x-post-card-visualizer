@@ -25,6 +25,7 @@ import {
   EASING_STANDARD,
   ERROR_MESSAGE_DISPLAY_DURATION,
   THEME_TRANSITION,
+  VIEWPORT_EDGE_MARGIN_PX,
 } from '@/constants/ui'
 import { DEFAULT_PLACEHOLDER_SHARE_PARAM } from '@/lib/placeholder'
 
@@ -228,9 +229,12 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
   }
 
   return (
-    <div 
+    <div
       className="relative z-40 flex items-center justify-between"
-      style={{ width: `${cardWidth}px` }}
+      style={{
+        ['--toolbar-requested-width' as string]: cardWidth,
+        width: `min(calc(var(--toolbar-requested-width) * 1px), calc(100vw - ${2 * VIEWPORT_EDGE_MARGIN_PX}px))`,
+      }}
     >
         {/* Export Error Overlay */}
         {exportError && (

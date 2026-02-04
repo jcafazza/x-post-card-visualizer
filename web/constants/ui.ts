@@ -126,3 +126,31 @@ export const MODAL_CONTENT_PADDING = 24
 
 /** Small spacing (matches Tailwind p-3 / space-3). Used for modal content top extra, tight gaps. */
 export const SPACING_SMALL = 12
+
+/** Horizontal space (px) from viewport edge for header, toolbar, and legal footer. Ensures consistent inset across the app. */
+export const VIEWPORT_EDGE_MARGIN_PX = 28
+
+/** Viewport max-width (px) below which the app shows the mobile "not ready" placeholder instead of the full editor. */
+export const MOBILE_BREAKPOINT_MAX = 450
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CARD TILT (share / mobile placeholder)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Max tilt in degrees (rotateX / rotateY) for cursor or device tilt. Kept subtle. */
+export const CARD_TILT_MAX_DEG = 2.5
+
+/** Lift in px (translateZ) when hover/tilt active. */
+export const CARD_TILT_LIFT_PX = 4
+
+/** Shimmer overlay opacity (0–1). */
+export const CARD_TILT_SHIMMER_OPACITY = 0.12
+
+/** Lerp factor per frame for smoothing (0–1). Lower = smoother, more lag. */
+export const CARD_TILT_SMOOTHING = 0.12
+
+/** Mobile: stronger smoothing for accelerometer noise. */
+export const CARD_TILT_SMOOTHING_MOBILE = 0.06
+
+/** Touch-drag: max normalized delta (e.g. 0.5 = ±0.5) from touch start. */
+export const CARD_TILT_TOUCH_MAX_NORM = 0.4

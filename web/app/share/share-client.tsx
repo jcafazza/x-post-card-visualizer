@@ -18,8 +18,10 @@ import {
   FOOTER_SCROLL_CLEAR_EXTRA,
   SHARE_LOADING_MIN_MS,
   SHARE_PHASE2_DELAY_MS,
+  VIEWPORT_EDGE_MARGIN_PX,
 } from '@/constants/ui'
 import { hexToRgba } from '@/lib/utils'
+import { setTimezoneCookieIfMissing } from '@/lib/tz-cookie'
 import {
   CARD_DEFAULT_RADIUS,
   CARD_DEFAULT_WIDTH,
@@ -223,48 +225,72 @@ function SharePageContent({
   )
 }
 
+function mergeDefaultTheme(parsed: { sourceUrl: string | null; initialSettings: CardSettings }, defaultTheme: Theme): CardSettings['theme'] {
+  if (typeof window === 'undefined') return defaultTheme
+  const themeFromUrl = new URLSearchParams(window.location.search).has('theme')
+  return themeFromUrl ? parsed.initialSettings.theme : defaultTheme
+}
+
 /**
  * Client-only share page. Reads query from window.location.search so we never suspend
  * (useSearchParams can leave the page stuck on the Suspense fallback). Parses url + settings
- * and renders SharePageContent.
+ * and renders SharePageContent. Uses defaultTheme (time-of-day) when URL does not specify theme.
  */
-export default function InteractiveSharePage() {
+export default function InteractiveSharePage({ defaultTheme = 'light' }: { defaultTheme?: Theme }) {
   const pathname = usePathname()
   const [parsed, setParsed] = useState<{
     sourceUrl: string | null
     initialSettings: CardSettings
   } | null>(null)
 
+  useEffect(() => {
+    setTimezoneCookieIfMissing()
+  }, [])
+
   // Read query after paint and when pathname is /share (client with real URL; handles soft nav).
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const apply = () => setParsed(parseShareSearch(window.location.search))
+    const apply = () => {
+      const result = parseShareSearch(window.location.search)
+      const theme = mergeDefaultTheme(result, defaultTheme)
+      setParsed({ sourceUrl: result.sourceUrl, initialSettings: { ...result.initialSettings, theme } })
+    }
     const raf = requestAnimationFrame(apply)
     return () => cancelAnimationFrame(raf)
-  }, [pathname])
+  }, [pathname, defaultTheme])
 
   // Fallback: re-read after load in case the URL wasn't ready on first paint.
+  // We intentionally omit `parsed` from deps so we only register once; the guard inside onLoad uses current parsed.
   useEffect(() => {
     if (typeof window === 'undefined') return undefined
-    const onLoad = () => setParsed((prev) => prev === null ? parseShareSearch(window.location.search) : prev)
+    const onLoad = () => {
+      if (parsed !== null) return
+      const result = parseShareSearch(window.location.search)
+      const theme = mergeDefaultTheme(result, defaultTheme)
+      setParsed({ sourceUrl: result.sourceUrl, initialSettings: { ...result.initialSettings, theme } })
+    }
     if (document.readyState === 'complete') {
       onLoad()
       return undefined
     }
     window.addEventListener('load', onLoad)
     return () => window.removeEventListener('load', onLoad)
-  }, [])
+  }, [defaultTheme])
 
   // Re-read on back/forward.
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const onPopState = () => setParsed(parseShareSearch(window.location.search))
+    const onPopState = () => {
+      const result = parseShareSearch(window.location.search)
+      const theme = mergeDefaultTheme(result, defaultTheme)
+      setParsed({ sourceUrl: result.sourceUrl, initialSettings: { ...result.initialSettings, theme } })
+    }
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
-  }, [])
+  }, [defaultTheme])
 
-  // Footer uses URL theme (parsed?.initialSettings?.theme) so it matches the share page
-  const footerTheme = getThemeStyles(parsed?.initialSettings?.theme ?? 'light')
+  // Footer uses effective theme (URL theme or time-of-day defaultTheme)
+  const footerTheme = getThemeStyles(parsed?.initialSettings?.theme ?? defaultTheme)
 
   if (parsed === null) {
     return (
@@ -314,8 +340,10 @@ function SharePageFooter({ theme }: { theme: ReturnType<typeof getThemeStyles> }
         />
       </div>
       <div
-        className="fixed bottom-5 left-1/2 -translate-x-1/2 text-xs font-medium whitespace-nowrap z-[50]"
+        className="fixed bottom-5 left-0 right-0 text-xs font-medium text-center z-[50]"
         style={{
+          paddingLeft: VIEWPORT_EDGE_MARGIN_PX,
+          paddingRight: VIEWPORT_EDGE_MARGIN_PX,
           color: theme.textTertiary,
           opacity: 0.6,
           transition: THEME_TRANSITION,

@@ -29,6 +29,15 @@ export const CARD_CORNER_ZONE = 24
 /** Length of the resize handles in pixels */
 export const CARD_HANDLE_LENGTH = 12
 
+/** Space from viewport edge to the resize handle edge when viewport shrinks (px). */
+export const CARD_VIEWPORT_MARGIN = 28
+
+/** Width resize handles extend this far outside the card (px). Used with CARD_VIEWPORT_MARGIN so card + handles stay within viewport. */
+export const CARD_HANDLE_OVERHANG = 20
+
+/** Space from viewport edge to card when there are no resize handles (share link, mobile placeholder). Matches semantic spacing (e.g. 24px ≈ spacing-6). */
+export const CARD_VIEWPORT_MARGIN_LOCKED = 24
+
 /** Maximum overshoot distance for rubberband effect when dragging beyond max width (in pixels) */
 export const RUBBERBAND_MAX_OVERSHOOT = 30
 

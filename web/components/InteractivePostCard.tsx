@@ -2,16 +2,20 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
+import { useCardTilt } from '@/hooks/useCardTilt'
 import PostCard from './PostCard'
 import { PostData, CardSettings, ShadowIntensity } from '@/types/post'
 import { getThemeStyles } from '@/lib/themes'
-import { ANIMATION_MICRO, ANIMATION_STANDARD, ANIMATION_DELIBERATE, EASING_ELEGANT, EASING_STANDARD, EASING_BOUNCE, THEME_TRANSITION, TOOLBAR_CARD_SPACING } from '@/constants/ui'
+import { ANIMATION_MICRO, ANIMATION_STANDARD, ANIMATION_DELIBERATE, EASING_ELEGANT, EASING_STANDARD, EASING_BOUNCE, THEME_TRANSITION, TOOLBAR_CARD_SPACING, CARD_TILT_SHIMMER_OPACITY } from '@/constants/ui'
 import {
   CARD_MIN_WIDTH,
   CARD_MAX_WIDTH,
   CARD_MAX_RADIUS,
   CARD_CORNER_ZONE,
   CARD_HANDLE_LENGTH,
+  CARD_HANDLE_OVERHANG,
+  CARD_VIEWPORT_MARGIN,
+  CARD_VIEWPORT_MARGIN_LOCKED,
   CARD_BORDER_WIDTH,
   RUBBERBAND_MAX_OVERSHOOT as RUBBERBAND_MAX_OVERSHOOT_PX,
   CARD_BOTTOM_MARGIN,
@@ -296,6 +300,7 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
 
   const cardRef = useRef<HTMLDivElement>(null)
   const cardAreaRef = useRef<HTMLDivElement>(null)
+  const tiltContainerRef = useRef<HTMLDivElement>(null)
   const resizeTypeRef = useRef<'width-left' | 'width-right' | null>(null)
   const startXRef = useRef<number>(0)
   const startWidthRef = useRef<number>(0)
@@ -685,13 +690,22 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
     }
   }, [])
 
+  const requestedWidth = visualWidth !== null ? visualWidth : settings.cardWidth
+  const viewportMaxCardWidthPx = lockLayout
+    ? 2 * CARD_VIEWPORT_MARGIN_LOCKED
+    : 2 * (CARD_VIEWPORT_MARGIN + CARD_HANDLE_OVERHANG)
+
+  const tiltEnabled = lockLayout && !prefersReducedMotion
+  const tilt = useCardTilt(tiltContainerRef, tiltEnabled)
+
   return (
-    <div className="inline-flex flex-col items-center">
+    <div className="inline-flex flex-col items-center overflow-visible">
       <div
         ref={cardRef}
-        className="relative"
+        className="relative overflow-visible"
         style={{
-          width: `${visualWidth !== null ? visualWidth : settings.cardWidth}px`,
+          ['--card-requested-width' as string]: requestedWidth,
+          width: `min(calc(var(--card-requested-width) * 1px), calc(100vw - ${viewportMaxCardWidthPx}px))`,
           // No transition during active width drag so the card tracks the cursor instantly.
           // Animate when snapping back from rubberband overshoot (max) or undershoot (min).
           transition: prefersReducedMotion
@@ -715,27 +729,75 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
           />
         )}
 
-        {/* Card area: contains card + button. cardAreaRef used for hover bounds so button hides when pointer leaves. No overflow:hidden so card shadow is not clipped. */}
-        <div
-          ref={cardAreaRef}
-          className="relative w-full"
-          style={{ borderRadius: cardRadiusPx }}
-          aria-hidden
-        >
-          <PostCard post={post} settings={postCardSettings} styleOverride={postCardStyleOverride} />
+        {lockLayout ? (
+          <div className="w-full overflow-visible" style={{ perspective: '1000px' }}>
+            <div
+              ref={tiltContainerRef}
+              className="w-full relative overflow-visible"
+              style={{
+                transform: `perspective(1000px) rotateX(${tilt.rotateX}deg) rotateY(${tilt.rotateY}deg) translateZ(${tilt.lift}px)`,
+                transformStyle: 'preserve-3d',
+              }}
+              onMouseMove={tilt.onMouseMove}
+              onMouseLeave={tilt.onMouseLeave}
+              onTouchStart={tilt.onTouchStart}
+              onTouchMove={tilt.onTouchMove}
+              onTouchEnd={tilt.onTouchEnd}
+            >
+              <div
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  borderRadius: cardRadiusPx,
+                  background: `radial-gradient(circle at ${tilt.shimmerX * 100}% ${tilt.shimmerY * 100}%, rgba(255,255,255,${CARD_TILT_SHIMMER_OPACITY}), transparent 55%)`,
+                }}
+                aria-hidden
+              />
+              <div
+                ref={cardAreaRef}
+                className="relative w-full overflow-visible"
+                style={{ borderRadius: cardRadiusPx }}
+                aria-hidden
+              >
+                <PostCard post={post} settings={postCardSettings} styleOverride={postCardStyleOverride} />
+                {sourceUrl && (
+                  <ViewOriginalStrip
+                    sourceUrl={sourceUrl}
+                    stripVisible={!!stripVisible}
+                    theme={theme}
+                    cardRadiusPx={cardRadiusPx}
+                    buttonMinWidth={buttonMinWidth}
+                    prefersReducedMotion={prefersReducedMotion}
+                    revealTransition={revealTransition}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Card area: contains card + button. cardAreaRef used for hover bounds so button hides when pointer leaves. overflow-visible so card shadow is not clipped. */}
+            <div
+              ref={cardAreaRef}
+              className="relative w-full overflow-visible"
+              style={{ borderRadius: cardRadiusPx }}
+              aria-hidden
+            >
+              <PostCard post={post} settings={postCardSettings} styleOverride={postCardStyleOverride} />
 
-          {sourceUrl && (
-            <ViewOriginalStrip
-              sourceUrl={sourceUrl}
-              stripVisible={!!stripVisible}
-              theme={theme}
-              cardRadiusPx={cardRadiusPx}
-              buttonMinWidth={buttonMinWidth}
-              prefersReducedMotion={prefersReducedMotion}
-              revealTransition={revealTransition}
-            />
-          )}
-        </div>
+              {sourceUrl && (
+                <ViewOriginalStrip
+                  sourceUrl={sourceUrl}
+                  stripVisible={!!stripVisible}
+                  theme={theme}
+                  cardRadiusPx={cardRadiusPx}
+                  buttonMinWidth={buttonMinWidth}
+                  prefersReducedMotion={prefersReducedMotion}
+                  revealTransition={revealTransition}
+                />
+              )}
+            </div>
+          </>
+        )}
       </div>
 
       {(isValueButtonMounted || valueLabel != null) && (
