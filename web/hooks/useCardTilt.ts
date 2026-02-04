@@ -136,9 +136,6 @@ export function useCardTilt(
     (e: React.TouchEvent) => {
       if (!enabled || !containerRef.current || e.touches.length === 0) return
       const t = e.touches[0]
-      const rect = containerRef.current.getBoundingClientRect()
-      const x = (t.clientX - rect.left) / rect.width
-      const y = (t.clientY - rect.top) / rect.height
       touchStartRef.current = {
         x: t.clientX,
         y: t.clientY,
