@@ -1,6 +1,6 @@
 {
   "name": "x-post-card-visualizer",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Embed beautifully styled X (Twitter) post cards in your React app",
   "author": "John Cafazza",
   "license": "MIT",
