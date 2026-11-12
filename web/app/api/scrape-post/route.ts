@@ -9,6 +9,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { extractMedia, normalizeTwimgMediaUrl } from '@/lib/media-extraction'
+import type { NormalizedMedia } from '@/lib/media-extraction'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -154,125 +156,33 @@ function normalizeAvatarUrl(url?: string): string | undefined {
   return normalized
 }
 
-function proxyImageUrl(url?: string): string {
+function proxyImageUrl(url?: string, request?: NextRequest): string {
   if (!url) return ''
-  // If already proxied/relative, leave as-is.
-  if (url.startsWith('/')) return url
-  if (!url.startsWith('http')) return url
-  return `/api/image?url=${encodeURIComponent(url)}`
-}
-
-function proxyImageUrls(urls: string[]): string[] {
-  return urls.map((u) => proxyImageUrl(u)).filter(Boolean)
-}
-
-type NormalizedMedia = { url: string; kind: 'photo' | 'thumb' }
-
-function normalizeTwimgMediaUrl(input?: string): NormalizedMedia | null {
-  if (!input || typeof input !== 'string') return null
-  if (!input.startsWith('http')) return null
-
-  let u: URL
-  try {
-    u = new URL(input)
-  } catch {
-    return null
-  }
-
-  const host = u.hostname.toLowerCase()
-  if (host !== 'pbs.twimg.com' && !host.endsWith('.twimg.com')) return null
-
-  const path = u.pathname
-
-  // Never treat avatars/icons/etc as tweet media.
-  if (path.includes('/profile_images/')) return null
-
-  // Ignore non-tweet media assets that often appear in embeds.
-  if (path.includes('/card_img/')) return null
-  if (path.includes('/semantic_core_img/')) return null
-
-  const isPhoto = path.includes('/media/')
-  const isThumb =
-    path.includes('/ext_tw_video_thumb/') ||
-    path.includes('/amplify_video_thumb/') ||
-    path.includes('/tweet_video_thumb/')
-
-  if (!isPhoto && !isThumb) return null
-
-  const baseUrl = `${u.origin}${u.pathname}`
-  return {
-    url: `${baseUrl}?format=jpg&name=large`,
-    kind: isPhoto ? 'photo' : 'thumb',
-  }
-}
-
-/**
- * Extracts high-quality images from the syndication response.
- */
-function extractMedia(data: any): string[] {
-  const rawCandidates: string[] = []
-  const anyData = data as any
-
-  // 1. Try photos array (standard images)
-  if (data.photos && Array.isArray(data.photos)) {
-    data.photos.forEach((p: any) => {
-      if (p?.url) rawCandidates.push(p.url)
-    })
-  }
-
-  // 2. Try mediaDetails (often contains video thumbnails/gifs or high-res variants)
-  if (data.mediaDetails && Array.isArray(data.mediaDetails)) {
-    data.mediaDetails.forEach((m: any) => {
-      if (m?.media_url_https) rawCandidates.push(m.media_url_https)
-    })
-  }
-
-  // 2b. Extra brute-force paths (payload shape can vary)
-  const altMediaLists: any[] = [
-    anyData?.entities?.media,
-    anyData?.extended_entities?.media,
-    anyData?.media,
-    anyData?.media_details,
-  ].filter(Boolean)
-  for (const list of altMediaLists) {
-    if (!Array.isArray(list)) continue
-    for (const m of list) {
-      const u =
-        m?.media_url_https ||
-        m?.media_url ||
-        m?.url ||
-        m?.mediaUrl ||
-        m?.src
-      if (typeof u === 'string' && u) rawCandidates.push(u)
+  // If already proxied/relative or absolute, leave as-is.
+  if (url.startsWith('/') || !url.startsWith('http')) return url
+  
+  // Build absolute URL for third-party embeds (npm package)
+  // Use request headers to determine the host, fallback to environment variable
+  let baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : ''
+  
+  if (request) {
+    const host = request.headers.get('host')
+    const proto = request.headers.get('x-forwarded-proto') || 'https'
+    if (host) {
+      baseUrl = `${proto}://${host}`
     }
   }
-
-  // 3. Video poster as a fallback (only helps for video/GIF posts)
-  if (data.video?.poster) {
-    rawCandidates.push(data.video.poster)
+  
+  // If no baseUrl determined, return relative (web app will work)
+  if (!baseUrl) {
+    return `/api/image?url=${encodeURIComponent(url)}`
   }
+  
+  return `${baseUrl}/api/image?url=${encodeURIComponent(url)}`
+}
 
-  const normalized: NormalizedMedia[] = []
-  for (const c of rawCandidates) {
-    const n = normalizeTwimgMediaUrl(c)
-    if (n) normalized.push(n)
-  }
-
-  // If the tweet has real photos, drop video thumbs (they often cause "extra" broken images).
-  const hasPhotos = normalized.some((m) => m.kind === 'photo')
-  const filtered = hasPhotos ? normalized.filter((m) => m.kind === 'photo') : normalized
-
-  // Deduplicate while preserving order, and cap to a reasonable max.
-  const out: string[] = []
-  const seen = new Set<string>()
-  for (const m of filtered) {
-    if (seen.has(m.url)) continue
-    seen.add(m.url)
-    out.push(m.url)
-    if (out.length >= 4) break
-  }
-
-  return out
+function proxyImageUrls(urls: string[], request?: NextRequest): string[] {
+  return urls.map((u) => proxyImageUrl(u, request)).filter(Boolean)
 }
 
 function extractBestText(data: any): string {
@@ -625,7 +535,7 @@ export async function POST(request: NextRequest) {
         author: {
           ...sample.author,
           // Keep demo mode consistent with production: proxy remote images so export works reliably.
-          avatar: proxyImageUrl(sample.author.avatar),
+          avatar: proxyImageUrl(sample.author.avatar, request),
         },
       }, { headers: corsHeaders() })
     }
@@ -669,8 +579,8 @@ export async function POST(request: NextRequest) {
 
       if (text || images.length > 0) {
         return NextResponse.json({
-          author: { name, handle, avatar: proxyImageUrl(avatarRaw), verified },
-          content: { text, images: proxyImageUrls(images) },
+          author: { name, handle, avatar: proxyImageUrl(avatarRaw, request), verified },
+          content: { text, images: proxyImageUrls(images, request) },
           timestamp,
         }, { headers: corsHeaders() })
       }
@@ -693,10 +603,10 @@ export async function POST(request: NextRequest) {
           author: {
             name: username,
             handle: `@${username}`,
-            avatar: proxyImageUrl(avatarRaw),
+            avatar: proxyImageUrl(avatarRaw, request),
             verified: false,
           },
-          content: { text, images: proxyImageUrls(images) },
+          content: { text, images: proxyImageUrls(images, request) },
           timestamp: new Date().toISOString(),
         }, { headers: corsHeaders() })
       }
@@ -720,7 +630,7 @@ export async function POST(request: NextRequest) {
             name: oembed.author_name || username,
             // `author_name` can include spaces/emojis; always use the URL username for handle + avatar lookup.
             handle: `@${username}`,
-            avatar: proxyImageUrl(`https://unavatar.io/twitter/${username}`),
+            avatar: proxyImageUrl(`https://unavatar.io/twitter/${username}`, request),
             verified: false,
           },
           content: { text, images: [] },

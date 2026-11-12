@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo, memo } from 'react'
 import { PostData, CardSettings, ShadowIntensity } from '@/types/post'
 import { getThemeStyles } from '@/lib/themes'
 import { formatPostTimestamp } from '@/lib/utils'
@@ -13,10 +14,13 @@ interface PostCardProps {
   styleOverride?: React.CSSProperties
 }
 
-export default function PostCard({ post, settings, styleOverride }: PostCardProps) {
-  const theme = getThemeStyles(settings.theme)
+function PostCard({ post, settings, styleOverride }: PostCardProps) {
+  const theme = useMemo(() => getThemeStyles(settings.theme), [settings.theme])
   const hasImages = post.content.images.length > 0
-  const formattedTimestamp = settings.showDate ? formatPostTimestamp(post.timestamp) : null
+  const formattedTimestamp = useMemo(
+    () => settings.showDate ? formatPostTimestamp(post.timestamp) : null,
+    [settings.showDate, post.timestamp]
+  )
 
   // Map shadow intensity to Tailwind classes - type-safe mapping
   const shadowClasses: Record<ShadowIntensity, string> = {
@@ -214,3 +218,5 @@ export default function PostCard({ post, settings, styleOverride }: PostCardProp
     </div>
   )
 }
+
+export default memo(PostCard)

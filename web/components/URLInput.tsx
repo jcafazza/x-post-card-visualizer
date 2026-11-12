@@ -68,32 +68,27 @@ export default function URLInput({ onPostLoad, onSourceUrlChange, onClear, theme
     const updateButtonWidth = () => {
       if (buttonRef.current) {
         const width = buttonRef.current.getBoundingClientRect().width
-        setButtonWidth(width)
+        setButtonWidth((prevWidth) => {
+          // Only update if changed significantly to avoid unnecessary renders
+          return Math.abs(prevWidth - width) > 1 ? width : prevWidth
+        })
       }
     }
 
     // Use ResizeObserver for reliable width tracking
     let resizeObserver: ResizeObserver | null = null
     if (buttonRef.current && typeof ResizeObserver !== 'undefined') {
-      resizeObserver = new ResizeObserver(() => {
-        updateButtonWidth()
-      })
+      resizeObserver = new ResizeObserver(updateButtonWidth)
       resizeObserver.observe(buttonRef.current)
     }
 
-    // Also update immediately and after a short delay to catch initial render
+    // Initial measurement
     updateButtonWidth()
-    const timeoutId = setTimeout(updateButtonWidth, 50)
-    const rafId = requestAnimationFrame(() => {
-      requestAnimationFrame(updateButtonWidth)
-    })
 
     return () => {
       if (resizeObserver) resizeObserver.disconnect()
-      clearTimeout(timeoutId)
-      cancelAnimationFrame(rafId)
     }
-  }, [isLoading, justImported, error, hasImported, url])
+  }, [isLoading, justImported, error, hasImported])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

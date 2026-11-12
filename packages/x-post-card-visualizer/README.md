@@ -11,7 +11,7 @@ npm install x-post-card-visualizer
 ## Hosted API (default)
 
 `XCard` uses a default endpoint to fetch post data: `https://x-post-card-visualizer.vercel.app/api/scrape-post`.  
-Deploy the [web app](https://github.com/johncafazza/x-post-card-visualizer) (this repo’s `web` folder) to Vercel with project name **x-post-card-visualizer**, or pass `apiUrl` to `XCard` with your own deployment URL.
+Deploy the [web app](https://github.com/jcafazza/x-post-card-visualizer) (this repo’s `web` folder) to Vercel with project name **x-post-card-visualizer**, or pass `apiUrl` to `XCard` with your own deployment URL.
 
 ## Usage
 

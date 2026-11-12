@@ -2,7 +2,7 @@
 
 import { CardSettings, ShadowIntensity, ThemeStyles, THEMES, SHADOW_INTENSITIES } from '@/types/post'
 import { exportElementToPNG } from '@/lib/export'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { Menu as BloomMenu } from 'bloom-menu'
 import {
   Sun,
@@ -213,7 +213,7 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
    * Constructs the shareable URL with all current settings as query parameters.
    * Uses default placeholder param when no post URL (Brad Radius demo).
    */
-  const buildShareUrl = (): string => {
+  const buildShareUrl = useCallback((): string => {
     const shareUrl = new URL('/share', window.location.origin)
     shareUrl.searchParams.set('url', sourceUrl ?? DEFAULT_PLACEHOLDER_SHARE_PARAM)
     shareUrl.searchParams.set('theme', settings.theme)
@@ -226,7 +226,7 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
       shareUrl.searchParams.set('radius', String(settings.borderRadius))
     }
     return shareUrl.toString()
-  }
+  }, [sourceUrl, settings])
 
   return (
     <div

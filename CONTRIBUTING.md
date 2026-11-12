@@ -16,7 +16,7 @@ Thank you for your interest in contributing. This document provides guidelines f
 
 2. **Clone your fork:**
    ```bash
-   git clone https://github.com/your-username/x-post-card-visualizer.git
+   git clone https://github.com/jcafazza/x-post-card-visualizer.git
    cd x-post-card-visualizer
    ```
 

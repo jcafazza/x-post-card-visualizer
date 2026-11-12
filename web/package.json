@@ -7,7 +7,9 @@
     "dev:turbo": "next dev --turbo",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",
@@ -17,7 +19,6 @@
     "@types/react-dom": "^19.0.2",
     "autoprefixer": "^10.4.20",
     "bloom-menu": "^0.1.0",
-    "framer-motion": "^12.29.0",
     "html2canvas": "^1.4.1",
     "lucide-react": "^0.562.0",
     "next": "^15.1.6",
@@ -32,5 +33,9 @@
     "path-to-regexp": "^6.3.0",
     "undici": "^6.22.1",
     "tar": "^7.5.4"
+  },
+  "devDependencies": {
+    "@vitest/ui": "^5.1.0",
+    "vitest": "^5.1.0"
   }
 }

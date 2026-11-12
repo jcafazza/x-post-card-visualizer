@@ -2,6 +2,8 @@
 
 **Transform public X (Twitter) posts into beautiful, customizable visual cards**—no API keys, no login. Built for designers who want full aesthetic control (theme, radius, shadows) and reliable export.
 
+🔗 **[Live Demo](https://x-post-card-visualizer.vercel.app)**
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue.svg)](https://www.typescriptlang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-15.1-black.svg)](https://nextjs.org/)
@@ -25,7 +27,7 @@
 **Prerequisites:** Node.js 18+, npm
 
 ```bash
-git clone https://github.com/your-username/x-post-card-visualizer.git
+git clone https://github.com/jcafazza/x-post-card-visualizer.git
 cd x-post-card-visualizer
 
 cd web
@@ -103,4 +105,4 @@ Contributions are welcome. See [CONTRIBUTING.md](./CONTRIBUTING.md) for code sty
 
 ---
 
-**[John Cafazza](https://github.com/johncafazza)** · X Post Card Visualizer
+**[John Cafazza](https://github.com/jcafazza)** · X Post Card Visualizer

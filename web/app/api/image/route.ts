@@ -4,12 +4,17 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
 
+// Cache allowed hostnames check
+const ALLOWED_HOSTS = new Set([
+  'pbs.twimg.com',
+  'video.twimg.com',
+  'unavatar.io'
+])
+
 function isAllowedImageHost(hostname: string): boolean {
   const h = hostname.toLowerCase()
-  if (h === 'pbs.twimg.com') return true
-  if (h === 'video.twimg.com') return true
+  if (ALLOWED_HOSTS.has(h)) return true
   if (h.endsWith('.twimg.com')) return true
-  if (h === 'unavatar.io') return true
   return false
 }
 

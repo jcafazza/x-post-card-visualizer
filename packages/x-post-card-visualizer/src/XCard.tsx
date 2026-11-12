@@ -110,14 +110,14 @@ export function XCard({
     onLoadRef.current = onLoad
   })
 
-  // Normalize and clamp props to valid ranges
-  const normalizedTheme = normalizeTheme(theme)
-  const normalizedShadow = normalizeShadow(shadow)
-  const clampedWidth = clamp(width, 350, 700)
-  const clampedRadius = clamp(radius, 0, 24)
+  // Normalize and clamp props to valid ranges (memoized to avoid recalculation)
+  const normalizedTheme = React.useMemo(() => normalizeTheme(theme), [theme])
+  const normalizedShadow = React.useMemo(() => normalizeShadow(shadow), [shadow])
+  const clampedWidth = React.useMemo(() => clamp(width, 350, 700), [width])
+  const clampedRadius = React.useMemo(() => clamp(radius, 0, 40), [radius])
 
-  // Get theme styles with validated theme
-  const themeStyles = getThemeStyles(normalizedTheme)
+  // Get theme styles with validated theme (memoized to avoid object recreation)
+  const themeStyles = React.useMemo(() => getThemeStyles(normalizedTheme), [normalizedTheme])
 
   useEffect(() => {
     let cancelled = false

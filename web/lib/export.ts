@@ -140,8 +140,13 @@ export async function exportElementToPNG(
   const originalScrollY = window.scrollY
 
   const originalStyles = captureComputedStyles(element)
-  await document.fonts.ready
-  await waitForImages(element as HTMLElement)
+  
+  // Parallel font and image loading for faster preparation
+  await Promise.all([
+    document.fonts.ready,
+    waitForImages(element as HTMLElement)
+  ])
+  
   window.scrollTo(0, 0)
   await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
 
