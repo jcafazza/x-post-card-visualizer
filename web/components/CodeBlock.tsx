@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import { ThemeStyles } from '@/types/post'
 import { tokenizeSnippet } from '@/lib/code-theme'
 import { THEME_TRANSITION } from '@/constants/ui'
@@ -21,9 +22,13 @@ export default function CodeBlock({
   theme,
   className = '',
 }: CodeBlockProps) {
-  const lines = code.split('\n')
+  // Memoize tokenization which can be expensive for large code blocks
+  const tokenizedLines = useMemo(() => {
+    const lines = code.split('\n')
+    return lines.map((line) => tokenizeSnippet(line))
+  }, [code])
 
-  const tokenColor = (type: string) => {
+  const tokenColor = useMemo(() => (type: string) => {
     switch (type) {
       case 'keyword':
       case 'number':
@@ -31,7 +36,7 @@ export default function CodeBlock({
       default:
         return theme.textPrimary
     }
-  }
+  }, [theme.accent, theme.textPrimary])
 
   return (
     <div
@@ -55,7 +60,7 @@ export default function CodeBlock({
               transition: THEME_TRANSITION,
             }}
           >
-            {lines.map((_, i) => (
+            {tokenizedLines.map((_, i) => (
               <div key={i} className="leading-[1.6]">
                 {i + 1}
               </div>
@@ -71,24 +76,21 @@ export default function CodeBlock({
           }}
         >
           <code>
-            {lines.map((line, lineIndex) => {
-              const segments = tokenizeSnippet(line)
-              return (
-                <div key={lineIndex} className="leading-[1.6]">
-                  {segments.map((seg, i) => (
-                    <span
-                      key={i}
-                      style={{
-                        color: tokenColor(seg.type),
-                        transition: THEME_TRANSITION,
-                      }}
-                    >
-                      {seg.text}
-                    </span>
-                  ))}
-                </div>
-              )
-            })}
+            {tokenizedLines.map((segments, lineIndex) => (
+              <div key={lineIndex} className="leading-[1.6]">
+                {segments.map((seg, i) => (
+                  <span
+                    key={i}
+                    style={{
+                      color: tokenColor(seg.type),
+                      transition: THEME_TRANSITION,
+                    }}
+                  >
+                    {seg.text}
+                  </span>
+                ))}
+              </div>
+            ))}
           </code>
         </pre>
       </div>

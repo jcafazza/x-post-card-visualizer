@@ -154,16 +154,33 @@ function normalizeAvatarUrl(url?: string): string | undefined {
   return normalized
 }
 
-function proxyImageUrl(url?: string): string {
+function proxyImageUrl(url?: string, request?: NextRequest): string {
   if (!url) return ''
-  // If already proxied/relative, leave as-is.
-  if (url.startsWith('/')) return url
-  if (!url.startsWith('http')) return url
-  return `/api/image?url=${encodeURIComponent(url)}`
+  // If already proxied/relative or absolute, leave as-is.
+  if (url.startsWith('/') || !url.startsWith('http')) return url
+  
+  // Build absolute URL for third-party embeds (npm package)
+  // Use request headers to determine the host, fallback to environment variable
+  let baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : ''
+  
+  if (request) {
+    const host = request.headers.get('host')
+    const proto = request.headers.get('x-forwarded-proto') || 'https'
+    if (host) {
+      baseUrl = `${proto}://${host}`
+    }
+  }
+  
+  // If no baseUrl determined, return relative (web app will work)
+  if (!baseUrl) {
+    return `/api/image?url=${encodeURIComponent(url)}`
+  }
+  
+  return `${baseUrl}/api/image?url=${encodeURIComponent(url)}`
 }
 
-function proxyImageUrls(urls: string[]): string[] {
-  return urls.map((u) => proxyImageUrl(u)).filter(Boolean)
+function proxyImageUrls(urls: string[], request?: NextRequest): string[] {
+  return urls.map((u) => proxyImageUrl(u, request)).filter(Boolean)
 }
 
 type NormalizedMedia = { url: string; kind: 'photo' | 'thumb' }
@@ -628,7 +645,7 @@ export async function POST(request: NextRequest) {
         author: {
           ...sample.author,
           // Keep demo mode consistent with production: proxy remote images so export works reliably.
-          avatar: proxyImageUrl(sample.author.avatar),
+          avatar: proxyImageUrl(sample.author.avatar, request),
         },
       }, { headers: corsHeaders() })
     }
@@ -672,8 +689,8 @@ export async function POST(request: NextRequest) {
 
       if (text || images.length > 0) {
         return NextResponse.json({
-          author: { name, handle, avatar: proxyImageUrl(avatarRaw), verified },
-          content: { text, images: proxyImageUrls(images) },
+          author: { name, handle, avatar: proxyImageUrl(avatarRaw, request), verified },
+          content: { text, images: proxyImageUrls(images, request) },
           timestamp,
         }, { headers: corsHeaders() })
       }
@@ -696,10 +713,10 @@ export async function POST(request: NextRequest) {
           author: {
             name: username,
             handle: `@${username}`,
-            avatar: proxyImageUrl(avatarRaw),
+            avatar: proxyImageUrl(avatarRaw, request),
             verified: false,
           },
-          content: { text, images: proxyImageUrls(images) },
+          content: { text, images: proxyImageUrls(images, request) },
           timestamp: new Date().toISOString(),
         }, { headers: corsHeaders() })
       }
@@ -723,7 +740,7 @@ export async function POST(request: NextRequest) {
             name: oembed.author_name || username,
             // `author_name` can include spaces/emojis; always use the URL username for handle + avatar lookup.
             handle: `@${username}`,
-            avatar: proxyImageUrl(`https://unavatar.io/twitter/${username}`),
+            avatar: proxyImageUrl(`https://unavatar.io/twitter/${username}`, request),
             verified: false,
           },
           content: { text, images: [] },

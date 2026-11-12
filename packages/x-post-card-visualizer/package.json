@@ -6,9 +6,9 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/johncafazza/x-post-card-visualizer.git"
+    "url": "git+https://github.com/jcafazza/x-post-card-visualizer.git"
   },
-  "homepage": "https://github.com/johncafazza/x-post-card-visualizer#readme",
+  "homepage": "https://github.com/jcafazza/x-post-card-visualizer#readme",
   "keywords": [
     "react",
     "twitter",
