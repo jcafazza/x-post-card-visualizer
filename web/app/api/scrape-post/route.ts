@@ -212,67 +212,70 @@ function normalizeTwimgMediaUrl(input?: string): NormalizedMedia | null {
 function extractMedia(data: any): string[] {
   const rawCandidates: string[] = []
   const anyData = data as any
+  const seen = new Set<string>()
+
+  // Helper to add unique candidates
+  const addCandidate = (url: string | undefined | null) => {
+    if (url && typeof url === 'string' && !seen.has(url)) {
+      rawCandidates.push(url)
+      seen.add(url)
+    }
+  }
 
   // 1. Try photos array (standard images)
   if (data.photos && Array.isArray(data.photos)) {
-    data.photos.forEach((p: any) => {
-      if (p?.url) rawCandidates.push(p.url)
-    })
+    for (const p of data.photos) {
+      addCandidate(p?.url)
+      if (rawCandidates.length >= 4) break
+    }
   }
 
   // 2. Try mediaDetails (often contains video thumbnails/gifs or high-res variants)
-  if (data.mediaDetails && Array.isArray(data.mediaDetails)) {
-    data.mediaDetails.forEach((m: any) => {
-      if (m?.media_url_https) rawCandidates.push(m.media_url_https)
-    })
+  if (rawCandidates.length < 4 && data.mediaDetails && Array.isArray(data.mediaDetails)) {
+    for (const m of data.mediaDetails) {
+      addCandidate(m?.media_url_https)
+      if (rawCandidates.length >= 4) break
+    }
   }
 
   // 2b. Extra brute-force paths (payload shape can vary)
-  const altMediaLists: any[] = [
-    anyData?.entities?.media,
-    anyData?.extended_entities?.media,
-    anyData?.media,
-    anyData?.media_details,
-  ].filter(Boolean)
-  for (const list of altMediaLists) {
-    if (!Array.isArray(list)) continue
-    for (const m of list) {
-      const u =
-        m?.media_url_https ||
-        m?.media_url ||
-        m?.url ||
-        m?.mediaUrl ||
-        m?.src
-      if (typeof u === 'string' && u) rawCandidates.push(u)
+  if (rawCandidates.length < 4) {
+    const altMediaLists: any[] = [
+      anyData?.entities?.media,
+      anyData?.extended_entities?.media,
+      anyData?.media,
+      anyData?.media_details,
+    ].filter(Boolean)
+    for (const list of altMediaLists) {
+      if (!Array.isArray(list)) continue
+      for (const m of list) {
+        const u = m?.media_url_https || m?.media_url || m?.url || m?.mediaUrl || m?.src
+        addCandidate(u)
+        if (rawCandidates.length >= 4) break
+      }
+      if (rawCandidates.length >= 4) break
     }
   }
 
   // 3. Video poster as a fallback (only helps for video/GIF posts)
-  if (data.video?.poster) {
-    rawCandidates.push(data.video.poster)
+  if (rawCandidates.length < 4 && data.video?.poster) {
+    addCandidate(data.video.poster)
   }
 
   const normalized: NormalizedMedia[] = []
   for (const c of rawCandidates) {
     const n = normalizeTwimgMediaUrl(c)
-    if (n) normalized.push(n)
+    if (n) {
+      normalized.push(n)
+      if (normalized.length >= 4) break
+    }
   }
 
   // If the tweet has real photos, drop video thumbs (they often cause "extra" broken images).
   const hasPhotos = normalized.some((m) => m.kind === 'photo')
   const filtered = hasPhotos ? normalized.filter((m) => m.kind === 'photo') : normalized
 
-  // Deduplicate while preserving order, and cap to a reasonable max.
-  const out: string[] = []
-  const seen = new Set<string>()
-  for (const m of filtered) {
-    if (seen.has(m.url)) continue
-    seen.add(m.url)
-    out.push(m.url)
-    if (out.length >= 4) break
-  }
-
-  return out
+  return filtered.slice(0, 4).map(m => m.url)
 }
 
 function extractBestText(data: any): string {

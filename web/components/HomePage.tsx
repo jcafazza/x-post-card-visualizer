@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 import Image from 'next/image'
 import InteractivePostCard from '@/components/InteractivePostCard'
@@ -79,7 +79,7 @@ export default function HomePage({ initialTheme }: HomePageProps) {
     setSettings(getDefaultSettings(initialTheme))
   }
 
-  const theme = getThemeStyles(settings.theme)
+  const theme = useMemo(() => getThemeStyles(settings.theme), [settings.theme])
 
   const HEADER_BOTTOM = 24 + 68
   const TOOLBAR_TOP_MARGIN = HEADER_BOTTOM + CONTENT_VERTICAL_SPACING
@@ -89,7 +89,12 @@ export default function HomePage({ initialTheme }: HomePageProps) {
     const toolbar = toolbarRef.current
     if (!main || !toolbar || prefersReducedMotion) return
 
-    const handleScroll = () => {
+    let rafId: number | null = null
+    let lastScrollTime = 0
+    const THROTTLE_MS = 16 // ~60fps
+
+    const updateOpacity = () => {
+      rafId = null
       try {
         const toolbarRect = toolbar.getBoundingClientRect()
         const toolbarTop = toolbarRect.top
@@ -97,27 +102,48 @@ export default function HomePage({ initialTheme }: HomePageProps) {
         const viewportHeight = window.innerHeight
         const fadeZone = TOOLBAR_FADE_ZONE
 
+        let newOpacity: number
         if (toolbarBottom < -fadeZone || toolbarTop > viewportHeight + fadeZone) {
-          setToolbarOpacity(0)
+          newOpacity = 0
         } else if (toolbarTop < -fadeZone) {
           const progress = Math.min(1, Math.max(0, (toolbarTop + fadeZone) / fadeZone))
-          setToolbarOpacity(1 - progress)
+          newOpacity = 1 - progress
         } else if (toolbarBottom > viewportHeight + fadeZone) {
           const progress = Math.min(1, Math.max(0, (toolbarBottom - viewportHeight) / fadeZone))
-          setToolbarOpacity(1 - progress)
+          newOpacity = 1 - progress
         } else {
-          setToolbarOpacity(1)
+          newOpacity = 1
         }
+
+        setToolbarOpacity((prev) => {
+          // Only update if the change is significant to avoid unnecessary renders
+          return Math.abs(prev - newOpacity) > 0.01 ? newOpacity : prev
+        })
       } catch {
         // Safari/WebKit can throw during scroll events
       }
     }
 
+    const handleScroll = () => {
+      const now = Date.now()
+      if (now - lastScrollTime < THROTTLE_MS) {
+        if (rafId === null) {
+          rafId = requestAnimationFrame(updateOpacity)
+        }
+        return
+      }
+      lastScrollTime = now
+      updateOpacity()
+    }
+
     main.addEventListener('scroll', handleScroll, { passive: true })
-    handleScroll()
+    updateOpacity()
 
     return () => {
       main.removeEventListener('scroll', handleScroll)
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId)
+      }
     }
   }, [prefersReducedMotion])
 

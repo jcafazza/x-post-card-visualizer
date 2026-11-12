@@ -313,7 +313,7 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
   settingsRef.current = settings
   onSettingsChangeRef.current = onSettingsChange
 
-  const theme = getThemeStyles(settings.theme)
+  const theme = useMemo(() => getThemeStyles(settings.theme), [settings.theme])
   const cardRadiusPx = settings.customBorderRadius ?? parseInt(settings.borderRadius, 10)
   const stripVisible = sourceUrl && cardHovered
 
