@@ -8,7 +8,6 @@ import {
   Sun,
   SunMoon,
   Moon,
-  Code,
   Layers2,
   Calendar,
   RotateCcw,
@@ -16,7 +15,8 @@ import {
   Link,
   Share,
   Loader2,
-  Check
+  Check,
+  Code
 } from 'lucide-react'
 import {
   ANIMATION_MICRO,
@@ -150,6 +150,19 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
     }
   }
 
+  const themeLabels: Record<string, string> = {
+    light: 'Light',
+    dim: 'Dim',
+    dark: 'Dark',
+  }
+
+  const shadowLabels: Record<ShadowIntensity, string> = {
+    flat: 'Flat',
+    raised: 'Raised',
+    floating: 'Floating',
+    elevated: 'Elevated',
+  }
+
   const cycleTheme = () => {
     animateButtonPress('theme')
     const currentIndex = THEMES.indexOf(settings.theme)
@@ -164,17 +177,17 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
     onSettingsChange({ ...settings, shadowIntensity: SHADOW_INTENSITIES[nextIndex] })
   }
 
-  const handleReset = () => {
-    animateButtonPress('reset')
-    setResetRotation(prev => prev - 360)
-    onReset()
-  }
-
   const shadowOpacityMap: Record<ShadowIntensity, number> = {
     flat: 0.5,
     raised: 0.7,
     floating: 0.85,
     elevated: 1,
+  }
+
+  const handleReset = () => {
+    animateButtonPress('reset')
+    setResetRotation(prev => prev - 360)
+    onReset()
   }
 
   const iconClasses = "w-5 h-5"
@@ -263,7 +276,8 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
             onBlur={() => setFocusedButton(null)}
             className={buttonBase}
             style={getButtonStyle('theme', true, hoveredButton === 'theme', focusedButton === 'theme')}
-            aria-label="Cycle Theme"
+            aria-label={`Theme: ${themeLabels[settings.theme]}`}
+            title={`Theme: ${themeLabels[settings.theme]}`}
           >
             {settings.theme === 'light' && <Sun className={iconClasses} strokeWidth={1.5} aria-hidden="true" />}
             {settings.theme === 'dim' && <SunMoon className={iconClasses} strokeWidth={1.5} aria-hidden="true" />}
@@ -279,7 +293,8 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
             onBlur={() => setFocusedButton(null)}
             className={buttonBase}
             style={getButtonStyle('shadow', true, hoveredButton === 'shadow', focusedButton === 'shadow')}
-            aria-label="Cycle Shadow"
+            aria-label={`Shadow: ${shadowLabels[settings.shadowIntensity]}`}
+            title={`Shadow: ${shadowLabels[settings.shadowIntensity]}`}
           >
             <Layers2
               className={iconClasses}
@@ -320,6 +335,7 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
             className={buttonBase}
             style={getButtonStyle('reset', false, hoveredButton === 'reset', focusedButton === 'reset')}
             aria-label="Reset to Default"
+            title="Reset to Default"
           >
             <RotateCcw
               className={iconClasses}
@@ -332,6 +348,52 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
             />
           </button>
 
+          {/* View code - icon-only button */}
+          <button
+            type="button"
+            onClick={() => {
+              animateButtonPress('viewCode')
+              onCopySnippetClick?.()
+            }}
+            onMouseEnter={() => setHoveredButton('viewCode')}
+            onMouseLeave={() => setHoveredButton(null)}
+            onFocus={() => setFocusedButton('viewCode')}
+            onBlur={() => setFocusedButton(null)}
+            className={buttonBase}
+            style={getButtonStyle('viewCode', false, hoveredButton === 'viewCode', focusedButton === 'viewCode')}
+            aria-label="View code"
+            title="View code"
+          >
+            <Code className={iconClasses} strokeWidth={1.5} aria-hidden="true" />
+          </button>
+
+          {/* Export PNG - icon-only button */}
+          <button
+            type="button"
+            disabled={isExporting}
+            onClick={handleExportAsPNG}
+            onMouseEnter={() => setHoveredButton('export')}
+            onMouseLeave={() => setHoveredButton(null)}
+            onFocus={() => setFocusedButton('export')}
+            onBlur={() => setFocusedButton(null)}
+            className={buttonBase}
+            style={{
+              ...getButtonStyle('export', false, hoveredButton === 'export', focusedButton === 'export'),
+              opacity: isExporting ? 0.5 : 1,
+            }}
+            aria-label={isExported ? 'Exported' : 'Export as PNG'}
+            title={isExported ? 'Exported' : 'Export as PNG'}
+          >
+            {isExporting ? (
+              <Loader2 className={iconClasses} strokeWidth={1.5} aria-hidden="true" />
+            ) : isExported ? (
+              <Check className={iconClasses} strokeWidth={1.5} aria-hidden="true" />
+            ) : (
+              <Download className={iconClasses} strokeWidth={1.5} aria-hidden="true" />
+            )}
+          </button>
+
+          {/* Share menu with Share link */}
           <BloomMenu.Root
             direction="bottom"
             anchor="end"
@@ -340,7 +402,7 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
           >
             <BloomMenu.Container
               buttonSize={44}
-              menuWidth={240}
+              menuWidth={160}
               menuRadius={16}
               style={{
                 backgroundColor: isShareMenuOpen ? currentTheme.bg : currentTheme.toolbarBg,
@@ -374,6 +436,7 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
                       transition: THEME_TRANSITION,
                     }}
                     aria-label="Share"
+                    title="Share"
                   >
                   <Share className={iconClasses} strokeWidth={1.5} aria-hidden="true" />
                 </button>
@@ -401,35 +464,6 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
                     <Link className="w-4 h-4" strokeWidth={1.8} aria-hidden="true" />
                   )}
                   <span className="flex-1">{isCopied ? 'Copied!' : 'Share link'}</span>
-                </BloomMenu.Item>
-
-                <BloomMenu.Item
-                  onSelect={() => {
-                    setIsShareMenuOpen(false)
-                    onCopySnippetClick?.()
-                  }}
-                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap ${menuText} ${menuHoverBg}`}
-                >
-                  <Code className="w-4 h-4" strokeWidth={1.8} aria-hidden="true" />
-                  <span className="flex-1">View code</span>
-                </BloomMenu.Item>
-
-                <div className="h-px my-1 mx-1" style={{ backgroundColor: currentTheme.border, opacity: 0.6 }} />
-
-                <BloomMenu.Item
-                  disabled={isExporting}
-                  onSelect={handleExportAsPNG}
-                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap ${menuText} ${menuHoverBg} disabled:opacity-50`}
-                >
-                  {isExporting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.8} aria-hidden="true" />
-                  ) : isExported ? (
-                    <Check className="w-4 h-4" strokeWidth={1.8} aria-hidden="true" />
-                  ) : (
-                    <Download className="w-4 h-4" strokeWidth={1.8} aria-hidden="true" />
-                  )}
-                  <span className="flex-1">{isExported ? 'Exported!' : 'Export as PNG'}</span>
-                  {!isExported && <span className="text-[11px] font-semibold opacity-60">Beta</span>}
                 </BloomMenu.Item>
               </BloomMenu.Content>
             </BloomMenu.Container>

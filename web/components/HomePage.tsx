@@ -340,7 +340,7 @@ export default function HomePage({ initialTheme }: HomePageProps) {
           paddingLeft: VIEWPORT_EDGE_MARGIN_PX,
           paddingRight: VIEWPORT_EDGE_MARGIN_PX,
           color: theme.textTertiary,
-          opacity: 0.6,
+          opacity: 0.95,
           transition: THEME_TRANSITION,
           pointerEvents: 'none',
         }}
