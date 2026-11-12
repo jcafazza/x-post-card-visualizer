@@ -5,7 +5,7 @@ export const themeConfig = {
     bg: '#FFFFFF',
     textPrimary: '#000000',
     textSecondary: '#666666',
-    textTertiary: '#999999',
+    textTertiary: '#6B6B6B',
     border: '#E6E6E6',
     appBg: '#FAFAFA',
     appText: '#171717',

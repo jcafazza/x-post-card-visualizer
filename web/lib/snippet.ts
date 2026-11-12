@@ -11,8 +11,9 @@ function escapeForDoubleQuotedJS(value: string): string {
 }
 
 /**
- * Builds the embed snippet for the x-post-card-visualizer NPM package using current settings.
+ * Builds the embed snippet (paste-ready JSX) for the x-post-card-visualizer NPM package using current settings.
  * All interpolated strings are escaped so the generated code is always valid and safe to paste.
+ * Does NOT include installation instructions - those are shown separately.
  */
 export function buildSnippet(settings: CardSettings, sourceUrl: string | null): string {
   const url = sourceUrl ?? PLACEHOLDER_URL
@@ -20,8 +21,7 @@ export function buildSnippet(settings: CardSettings, sourceUrl: string | null): 
   // Emit showDate so copied code matches the current preview (true or false).
   const showDateLine = `\n      showDate={${settings.showDate}}`
 
-  return `npm install x-post-card-visualizer
-import { XCard } from 'x-post-card-visualizer'
+  return `import { XCard } from 'x-post-card-visualizer'
 
 function MyComponent() {
   return (

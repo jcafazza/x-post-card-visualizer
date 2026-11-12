@@ -22,7 +22,7 @@ const API_PROPS = [
   { prop: 'theme', type: "'light' | 'dim' | 'dark'", default: "'light'", description: 'Color theme' },
   { prop: 'shadow', type: "'flat' | 'raised' | 'floating' | 'elevated'", default: "'floating'", description: 'Shadow intensity' },
   { prop: 'width', type: 'number', default: '450', description: 'Card width in pixels (350–700)' },
-  { prop: 'radius', type: 'number', default: '20', description: 'Border radius in pixels (0–24)' },
+  { prop: 'radius', type: 'number', default: '20', description: 'Border radius in pixels (0–40)' },
   { prop: 'showDate', type: 'boolean', default: 'true', description: 'Show post timestamp in card footer' },
   { prop: 'apiUrl', type: 'string', default: '(hosted)', description: 'Custom API endpoint' },
   { prop: 'className', type: 'string', default: '—', description: 'Custom wrapper className' },
@@ -60,12 +60,43 @@ export default function SnippetModal({
   const timerInstallRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null)
   const savedFocusRef = useRef<HTMLElement | null>(null)
   const prefersReducedMotion = useReducedMotion()
 
   useLayoutEffect(() => {
-    if (isOpen) savedFocusRef.current = document.activeElement as HTMLElement | null
+    if (isOpen) {
+      savedFocusRef.current = document.activeElement as HTMLElement | null
+      // Set initial focus to close button
+      setTimeout(() => closeButtonRef.current?.focus(), 10)
+    }
   }, [isOpen])
+
+  // Focus trap: keep focus within modal
+  const handleFocusTrap = useCallback((e: KeyboardEvent) => {
+    if (!isOpen || !panelRef.current) return
+    if (e.key !== 'Tab') return
+
+    const focusableElements = panelRef.current.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )
+    const firstElement = focusableElements[0]
+    const lastElement = focusableElements[focusableElements.length - 1]
+
+    if (e.shiftKey && document.activeElement === firstElement) {
+      e.preventDefault()
+      lastElement?.focus()
+    } else if (!e.shiftKey && document.activeElement === lastElement) {
+      e.preventDefault()
+      firstElement?.focus()
+    }
+  }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen) return
+    window.addEventListener('keydown', handleFocusTrap)
+    return () => window.removeEventListener('keydown', handleFocusTrap)
+  }, [isOpen, handleFocusTrap])
 
   const updateFadeVisibility = useCallback(() => {
     const el = scrollRef.current
@@ -199,11 +230,11 @@ export default function SnippetModal({
       {/* Centering wrapper: equal space above and below the modal */}
       <div
         className="fixed inset-0 z-[1001] flex items-center justify-center pointer-events-none"
-        aria-hidden="true"
       >
         <div
           ref={panelRef}
           role="dialog"
+          aria-modal="true"
           aria-label="Embed code snippet"
           className={`${panelClass} pointer-events-auto flex flex-col w-[calc(100%-2rem)] max-w-2xl h-[80vh] rounded-3xl border overflow-hidden relative`}
           style={panelEnterStyle}
@@ -274,6 +305,7 @@ export default function SnippetModal({
         </div>
         {/* Floating Close Button — above fade plates */}
         <button
+          ref={closeButtonRef}
           type="button"
           onClick={requestClose}
           className="absolute top-4 right-4 z-[60] w-11 h-11 rounded-full flex items-center justify-center border focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 hover:scale-105 active:scale-95 transition-all"
@@ -312,12 +344,13 @@ export default function SnippetModal({
                 <button
                   type="button"
                   onClick={() => copyToClipboard(INSTALLATION_CODE, 'install')}
-                  className={`${iconButtonBase} absolute top-1/2 right-3 -translate-y-1/2 opacity-0 group-hover:opacity-100 focus:opacity-100`}
+                  className={`${iconButtonBase} absolute top-1/2 right-3 -translate-y-1/2 opacity-90 hover:opacity-100 focus:opacity-100`}
                   style={{
                     backgroundColor: theme.toolbarBg,
                     borderColor: theme.buttonBorderDefault,
                     color: theme.textSecondary,
                     boxShadow: theme.shadowMedium,
+                    transition: 'opacity 150ms, transform 150ms',
                   }}
                   aria-label="Copy Installation Command"
                 >
@@ -336,12 +369,13 @@ export default function SnippetModal({
                 <button
                   type="button"
                   onClick={() => copyToClipboard(snippet, 'anatomy')}
-                  className={`${iconButtonBase} absolute top-3 right-3 opacity-0 group-hover:opacity-100 focus:opacity-100`}
+                  className={`${iconButtonBase} absolute top-3 right-3 opacity-90 hover:opacity-100 focus:opacity-100`}
                   style={{
                     backgroundColor: theme.toolbarBg,
                     borderColor: theme.buttonBorderDefault,
                     color: theme.textSecondary,
                     boxShadow: theme.shadowMedium,
+                    transition: 'opacity 150ms, transform 150ms',
                   }}
                   aria-label="Copy Code Snippet"
                 >

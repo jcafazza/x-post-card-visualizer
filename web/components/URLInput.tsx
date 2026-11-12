@@ -225,7 +225,7 @@ export default function URLInput({ onPostLoad, onSourceUrlChange, onClear, theme
           disabled={isLoading}
           name="post-url"
           autoComplete="url"
-          className="w-full bg-transparent border-none py-1.5 pl-2 text-base outline-none focus-visible:ring-2 focus-visible:ring-offset-2 placeholder:opacity-40 font-normal"
+          className="w-full bg-transparent border-none py-1.5 pl-2 text-base outline-none focus-visible:ring-2 focus-visible:ring-offset-2 placeholder:opacity-60 font-normal"
           style={{ 
             transition: THEME_TRANSITION,
             color: theme.appText,

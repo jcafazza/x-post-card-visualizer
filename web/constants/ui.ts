@@ -115,6 +115,9 @@ export const TOOLBAR_FADE_ZONE = 80
 /** Footer fade opacity at bottom (0-1) */
 export const FOOTER_FADE_OPACITY = 0.9
 
+/** Privacy footer text opacity (applied to textTertiary) - increased for WCAG AA */
+export const FOOTER_TEXT_OPACITY = 0.85
+
 /** Footer fade gradient stop position (0-1, where 0.25 = 75% from top) */
 export const FOOTER_FADE_STOP = 0.25
 

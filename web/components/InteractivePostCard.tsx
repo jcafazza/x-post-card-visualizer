@@ -750,13 +750,11 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
                   borderRadius: cardRadiusPx,
                   background: `radial-gradient(circle at ${tilt.shimmerX * 100}% ${tilt.shimmerY * 100}%, rgba(255,255,255,${CARD_TILT_SHIMMER_OPACITY}), transparent 55%)`,
                 }}
-                aria-hidden
               />
               <div
                 ref={cardAreaRef}
                 className="relative w-full overflow-visible"
                 style={{ borderRadius: cardRadiusPx }}
-                aria-hidden
               >
                 <PostCard post={post} settings={postCardSettings} styleOverride={postCardStyleOverride} />
                 {sourceUrl && (
@@ -780,7 +778,6 @@ export default function InteractivePostCard({ post, settings, onSettingsChange, 
               ref={cardAreaRef}
               className="relative w-full overflow-visible"
               style={{ borderRadius: cardRadiusPx }}
-              aria-hidden
             >
               <PostCard post={post} settings={postCardSettings} styleOverride={postCardStyleOverride} />
 

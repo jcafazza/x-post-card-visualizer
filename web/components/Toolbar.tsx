@@ -5,18 +5,14 @@ import { exportElementToPNG } from '@/lib/export'
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Menu as BloomMenu } from 'bloom-menu'
 import {
-  Sun,
-  SunMoon,
-  Moon,
-  Code,
-  Layers2,
   Calendar,
   RotateCcw,
   Download,
   Link,
   Share,
   Loader2,
-  Check
+  Check,
+  Code
 } from 'lucide-react'
 import {
   ANIMATION_MICRO,
@@ -150,18 +146,27 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
     }
   }
 
-  const cycleTheme = () => {
-    animateButtonPress('theme')
-    const currentIndex = THEMES.indexOf(settings.theme)
-    const nextIndex = (currentIndex + 1) % THEMES.length
-    onSettingsChange({ ...settings, theme: THEMES[nextIndex] })
+  const themeLabels: Record<string, string> = {
+    light: 'Light',
+    dim: 'Dim',
+    dark: 'Dark',
   }
 
-  const cycleShadow = () => {
+  const shadowLabels: Record<ShadowIntensity, string> = {
+    flat: 'Flat',
+    raised: 'Raised',
+    floating: 'Floating',
+    elevated: 'Elevated',
+  }
+
+  const setTheme = (theme: string) => {
+    animateButtonPress('theme')
+    onSettingsChange({ ...settings, theme: theme as CardSettings['theme'] })
+  }
+
+  const setShadow = (shadow: ShadowIntensity) => {
     animateButtonPress('shadow')
-    const currentIndex = SHADOW_INTENSITIES.indexOf(settings.shadowIntensity)
-    const nextIndex = (currentIndex + 1) % SHADOW_INTENSITIES.length
-    onSettingsChange({ ...settings, shadowIntensity: SHADOW_INTENSITIES[nextIndex] })
+    onSettingsChange({ ...settings, shadowIntensity: shadow })
   }
 
   const handleReset = () => {
@@ -170,15 +175,10 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
     onReset()
   }
 
-  const shadowOpacityMap: Record<ShadowIntensity, number> = {
-    flat: 0.5,
-    raised: 0.7,
-    floating: 0.85,
-    elevated: 1,
-  }
-
   const iconClasses = "w-5 h-5"
+  const iconClassesSmall = "w-4 h-4"
   const buttonBase = "w-11 h-11 rounded-full cursor-pointer flex items-center justify-center border outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+  const labeledButtonBase = "h-11 px-4 rounded-full cursor-pointer flex items-center justify-center gap-2 border outline-none focus-visible:ring-2 focus-visible:ring-offset-2 font-medium text-sm whitespace-nowrap"
 
   const menuItemBg = settings.theme === 'light' ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.1)'
   const menuText = settings.theme === 'light' ? 'text-neutral-900' : 'text-neutral-50'
@@ -254,40 +254,103 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
 
         {/* Customization Group */}
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={cycleTheme}
-            onMouseEnter={() => setHoveredButton('theme')}
-            onMouseLeave={() => setHoveredButton(null)}
-            onFocus={() => setFocusedButton('theme')}
-            onBlur={() => setFocusedButton(null)}
-            className={buttonBase}
-            style={getButtonStyle('theme', true, hoveredButton === 'theme', focusedButton === 'theme')}
-            aria-label="Cycle Theme"
-          >
-            {settings.theme === 'light' && <Sun className={iconClasses} strokeWidth={1.5} aria-hidden="true" />}
-            {settings.theme === 'dim' && <SunMoon className={iconClasses} strokeWidth={1.5} aria-hidden="true" />}
-            {settings.theme === 'dark' && <Moon className={iconClasses} strokeWidth={1.5} aria-hidden="true" />}
-          </button>
+          {/* Theme Picker */}
+          <BloomMenu.Root direction="bottom" anchor="start">
+            <BloomMenu.Container
+              buttonSize={44}
+              menuWidth={120}
+              menuRadius={16}
+              style={{
+                backgroundColor: currentTheme.toolbarBg,
+                border: `1px solid ${currentTheme.buttonBorderDefault}`,
+                boxShadow: currentTheme.shadowMedium,
+                transition: THEME_TRANSITION,
+                overflow: 'hidden',
+                zIndex: 1001,
+              }}
+            >
+              <BloomMenu.Trigger>
+                <button
+                  type="button"
+                  onMouseEnter={() => setHoveredButton('theme')}
+                  onMouseLeave={() => setHoveredButton(null)}
+                  onFocus={() => setFocusedButton('theme')}
+                  onBlur={() => setFocusedButton(null)}
+                  className={buttonBase}
+                  style={{
+                    ...getButtonStyle('theme', true, hoveredButton === 'theme', focusedButton === 'theme'),
+                    backgroundColor: 'transparent',
+                    borderWidth: 0,
+                    boxShadow: 'none',
+                  }}
+                  aria-label={`Theme: ${themeLabels[settings.theme]}`}
+                >
+                  <span className="text-sm font-medium">{themeLabels[settings.theme]}</span>
+                </button>
+              </BloomMenu.Trigger>
+              <BloomMenu.Content className="p-2">
+                {THEMES.map((theme) => (
+                  <BloomMenu.Item
+                    key={theme}
+                    onSelect={() => setTheme(theme)}
+                    className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap ${menuText} ${menuHoverBg} ${settings.theme === theme ? 'opacity-100' : 'opacity-70'}`}
+                  >
+                    <span className="flex-1">{themeLabels[theme]}</span>
+                    {settings.theme === theme && <Check className="w-4 h-4" strokeWidth={2} aria-hidden="true" />}
+                  </BloomMenu.Item>
+                ))}
+              </BloomMenu.Content>
+            </BloomMenu.Container>
+          </BloomMenu.Root>
 
-          <button
-            type="button"
-            onClick={cycleShadow}
-            onMouseEnter={() => setHoveredButton('shadow')}
-            onMouseLeave={() => setHoveredButton(null)}
-            onFocus={() => setFocusedButton('shadow')}
-            onBlur={() => setFocusedButton(null)}
-            className={buttonBase}
-            style={getButtonStyle('shadow', true, hoveredButton === 'shadow', focusedButton === 'shadow')}
-            aria-label="Cycle Shadow"
-          >
-            <Layers2
-              className={iconClasses}
-              strokeWidth={1.5}
-              style={{ opacity: shadowOpacityMap[settings.shadowIntensity] }}
-              aria-hidden="true"
-            />
-          </button>
+          {/* Shadow Picker */}
+          <BloomMenu.Root direction="bottom" anchor="start">
+            <BloomMenu.Container
+              buttonSize={44}
+              menuWidth={140}
+              menuRadius={16}
+              style={{
+                backgroundColor: currentTheme.toolbarBg,
+                border: `1px solid ${currentTheme.buttonBorderDefault}`,
+                boxShadow: currentTheme.shadowMedium,
+                transition: THEME_TRANSITION,
+                overflow: 'hidden',
+                zIndex: 1001,
+              }}
+            >
+              <BloomMenu.Trigger>
+                <button
+                  type="button"
+                  onMouseEnter={() => setHoveredButton('shadow')}
+                  onMouseLeave={() => setHoveredButton(null)}
+                  onFocus={() => setFocusedButton('shadow')}
+                  onBlur={() => setFocusedButton(null)}
+                  className={buttonBase}
+                  style={{
+                    ...getButtonStyle('shadow', true, hoveredButton === 'shadow', focusedButton === 'shadow'),
+                    backgroundColor: 'transparent',
+                    borderWidth: 0,
+                    boxShadow: 'none',
+                  }}
+                  aria-label={`Shadow: ${shadowLabels[settings.shadowIntensity]}`}
+                >
+                  <span className="text-sm font-medium">{shadowLabels[settings.shadowIntensity]}</span>
+                </button>
+              </BloomMenu.Trigger>
+              <BloomMenu.Content className="p-2">
+                {SHADOW_INTENSITIES.map((shadow) => (
+                  <BloomMenu.Item
+                    key={shadow}
+                    onSelect={() => setShadow(shadow)}
+                    className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap ${menuText} ${menuHoverBg} ${settings.shadowIntensity === shadow ? 'opacity-100' : 'opacity-70'}`}
+                  >
+                    <span className="flex-1">{shadowLabels[shadow]}</span>
+                    {settings.shadowIntensity === shadow && <Check className="w-4 h-4" strokeWidth={2} aria-hidden="true" />}
+                  </BloomMenu.Item>
+                ))}
+              </BloomMenu.Content>
+            </BloomMenu.Container>
+          </BloomMenu.Root>
 
           <button
             type="button"
@@ -332,6 +395,52 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
             />
           </button>
 
+          {/* View code - first-class labeled button */}
+          <button
+            type="button"
+            onClick={() => {
+              animateButtonPress('viewCode')
+              onCopySnippetClick?.()
+            }}
+            onMouseEnter={() => setHoveredButton('viewCode')}
+            onMouseLeave={() => setHoveredButton(null)}
+            onFocus={() => setFocusedButton('viewCode')}
+            onBlur={() => setFocusedButton(null)}
+            className={labeledButtonBase}
+            style={getButtonStyle('viewCode', false, hoveredButton === 'viewCode', focusedButton === 'viewCode')}
+            aria-label="View code"
+          >
+            <Code className={iconClassesSmall} strokeWidth={2} aria-hidden="true" />
+            <span>View code</span>
+          </button>
+
+          {/* Export PNG - first-class labeled button */}
+          <button
+            type="button"
+            disabled={isExporting}
+            onClick={handleExportAsPNG}
+            onMouseEnter={() => setHoveredButton('export')}
+            onMouseLeave={() => setHoveredButton(null)}
+            onFocus={() => setFocusedButton('export')}
+            onBlur={() => setFocusedButton(null)}
+            className={labeledButtonBase}
+            style={{
+              ...getButtonStyle('export', false, hoveredButton === 'export', focusedButton === 'export'),
+              opacity: isExporting ? 0.5 : 1,
+            }}
+            aria-label="Export as PNG"
+          >
+            {isExporting ? (
+              <Loader2 className={iconClassesSmall} strokeWidth={2} aria-hidden="true" />
+            ) : isExported ? (
+              <Check className={iconClassesSmall} strokeWidth={2} aria-hidden="true" />
+            ) : (
+              <Download className={iconClassesSmall} strokeWidth={2} aria-hidden="true" />
+            )}
+            <span>{isExported ? 'Exported!' : 'Export PNG'}</span>
+          </button>
+
+          {/* Share menu with Share link */}
           <BloomMenu.Root
             direction="bottom"
             anchor="end"
@@ -340,7 +449,7 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
           >
             <BloomMenu.Container
               buttonSize={44}
-              menuWidth={240}
+              menuWidth={160}
               menuRadius={16}
               style={{
                 backgroundColor: isShareMenuOpen ? currentTheme.bg : currentTheme.toolbarBg,
@@ -401,35 +510,6 @@ export default function Toolbar({ settings, onSettingsChange, currentTheme, onRe
                     <Link className="w-4 h-4" strokeWidth={1.8} aria-hidden="true" />
                   )}
                   <span className="flex-1">{isCopied ? 'Copied!' : 'Share link'}</span>
-                </BloomMenu.Item>
-
-                <BloomMenu.Item
-                  onSelect={() => {
-                    setIsShareMenuOpen(false)
-                    onCopySnippetClick?.()
-                  }}
-                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap ${menuText} ${menuHoverBg}`}
-                >
-                  <Code className="w-4 h-4" strokeWidth={1.8} aria-hidden="true" />
-                  <span className="flex-1">View code</span>
-                </BloomMenu.Item>
-
-                <div className="h-px my-1 mx-1" style={{ backgroundColor: currentTheme.border, opacity: 0.6 }} />
-
-                <BloomMenu.Item
-                  disabled={isExporting}
-                  onSelect={handleExportAsPNG}
-                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium whitespace-nowrap ${menuText} ${menuHoverBg} disabled:opacity-50`}
-                >
-                  {isExporting ? (
-                    <Loader2 className="w-4 h-4 animate-spin" strokeWidth={1.8} aria-hidden="true" />
-                  ) : isExported ? (
-                    <Check className="w-4 h-4" strokeWidth={1.8} aria-hidden="true" />
-                  ) : (
-                    <Download className="w-4 h-4" strokeWidth={1.8} aria-hidden="true" />
-                  )}
-                  <span className="flex-1">{isExported ? 'Exported!' : 'Export as PNG'}</span>
-                  {!isExported && <span className="text-[11px] font-semibold opacity-60">Beta</span>}
                 </BloomMenu.Item>
               </BloomMenu.Content>
             </BloomMenu.Container>
